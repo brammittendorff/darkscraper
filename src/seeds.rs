@@ -12,31 +12,36 @@ pub const TOR_SEEDS: &[&str] = &[
 
 // I2P eepsite seeds
 pub const I2P_SEEDS: &[&str] = &[
-    // Directories & registries
-    "http://identiguy.i2p/",
-    "http://notbob.i2p/",
-    "http://reg.i2p/",
-    "http://inr.i2p/",
-    "http://stats.i2p/",
-    "http://i2pjump.i2p/",
-    "http://linkz.i2p/",
+    // Directories & registries (MOST IMPORTANT - lots of links)
+    "http://notbob.i2p/",           // THE BEST - comprehensive directory, updated regularly
+    "http://identiguy.i2p/",        // Excellent categorized directory
+    "http://reg.i2p/",              // Registration service
+    "http://inr.i2p/",              // I2P Name Registry
+    "http://stats.i2p/",            // Network stats + directory
+    "http://i2pjump.i2p/",          // Jump service (address helper)
+    "http://linkz.i2p/",            // Link directory
+    "http://perv.i2p/",             // Another good directory
     // Search engines
-    "http://eepsites.i2p/",
-    "http://legwork.i2p/",
-    "http://i2psearch.i2p/",
-    "http://i2pfind.i2p/",
-    // Forums & wikis
-    "http://forum.i2p/",
-    "http://zzz.i2p/",
-    "http://i2pforum.i2p/",
-    "http://ramble.i2p/",
-    "http://ugha.i2p/",
-    // Community & aggregators
-    "http://planet.i2p/",
-    "http://www.i2p2.i2p/",
-    "http://echelon.i2p/",
-    "http://plugins.i2p/",
-    "http://tracker2.postman.i2p/",
+    "http://eepsites.i2p/",         // Eepsite search
+    "http://legwork.i2p/",          // Search engine
+    "http://i2psearch.i2p/",        // Search
+    "http://i2pfind.i2p/",          // Search
+    "http://epsilon.i2p/",          // Search and directory
+    // Forums & wikis (many internal links)
+    "http://forum.i2p/",            // Main I2P forum
+    "http://zzz.i2p/",              // Developer site (zzz is lead dev)
+    "http://i2pforum.i2p/",         // Forum
+    "http://ramble.i2p/",           // Forum/discussion
+    "http://ugha.i2p/",             // Wiki
+    "http://i2pwiki.i2p/",          // Community wiki
+    // Community & aggregators (good for discovering new sites)
+    "http://planet.i2p/",           // Blog aggregator
+    "http://www.i2p2.i2p/",         // I2P project site mirror
+    "http://echelon.i2p/",          // Community site
+    "http://plugins.i2p/",          // Plugin repository
+    "http://tracker2.postman.i2p/", // BitTorrent tracker (has many peers)
+    "http://git.idk.i2p/",          // GitLab instance (many projects)
+    "http://flibusta.i2p/",         // Library (if accessible)
 ];
 
 // ZeroNet zite seeds
@@ -77,25 +82,25 @@ pub const ZERONET_SEEDS: &[&str] = &[
     "http://1GNTAKCimBv5xEnt7QvkDn8sTkEPj7ZYTL.bit/", // ZeroShortener
 ];
 
-// Freenet/Hyphanet freesite seeds
-pub const FREENET_SEEDS: &[&str] = &[
+// Hyphanet (formerly Freenet) freesite seeds
+pub const HYPHANET_SEEDS: &[&str] = &[
     // Indexes and directories (most important for discovery)
-    "freenet:USK@5ijbfKSJ4kPZTRDzq363CHteEUiSZjrO-E36vbHvnIU,ZEZqPXeuYiyokY2r0wkhJr5cy7KBH9omkuWDqSC6PLs,AQACAAE/clean-spider/37/",
-    "freenet:USK@US6gHsNApDvyShI~sBHGEOplJ3pwZUDhLqTAas6rO4c,3jeU5OwV0-K4B6HRBznDYGvpu2PRUuwL0V110rn-~8g,AQACAAE/freenet-index/5/",
-    "freenet:USK@QRZAI1nSm~dAY2hTgiW1-C7P3CEGV9tqKaSOSmLiDMI,DcnBm6MV9zPKaT3MHRmBisfzI8tDhjVBNyjaHIJx5Oo,AQACAAE/activelink-index/0/",
-    "freenet:USK@pXTEkrmFi9FIhv3EAf8p4MRPKHmn4U-Y2LUsPfEvbdg,SDnSl03Gbl1r1oKz6fy4qj35gEIieGS3lYq8K5MFb5Q,AQACAAE/index/0/",
+    "hyphanet:USK@5ijbfKSJ4kPZTRDzq363CHteEUiSZjrO-E36vbHvnIU,ZEZqPXeuYiyokY2r0wkhJr5cy7KBH9omkuWDqSC6PLs,AQACAAE/clean-spider/37/",
+    "hyphanet:USK@US6gHsNApDvyShI~sBHGEOplJ3pwZUDhLqTAas6rO4c,3jeU5OwV0-K4B6HRBznDYGvpu2PRUuwL0V110rn-~8g,AQACAAE/freenet-index/5/",
+    "hyphanet:USK@QRZAI1nSm~dAY2hTgiW1-C7P3CEGV9tqKaSOSmLiDMI,DcnBm6MV9zPKaT3MHRmBisfzI8tDhjVBNyjaHIJx5Oo,AQACAAE/activelink-index/0/",
+    "hyphanet:USK@pXTEkrmFi9FIhv3EAf8p4MRPKHmn4U-Y2LUsPfEvbdg,SDnSl03Gbl1r1oKz6fy4qj35gEIieGS3lYq8K5MFb5Q,AQACAAE/index/0/",
     // Wikis and community sites
-    "freenet:USK@bt6o0REPxC8USh5IM1wg65p1DG-h8pqlZQFsdrkG6HU,1-YF9KPJiEPhktMFkfWZDYDSh2sWvqHm1bWbdloltP4,AQACAAE/mywiki/0/",
-    "freenet:USK@b2qNKBPnGtx9gDBDqiNCXzxQWZZVX-13Ndo---SBK80,F4F-zo2vAfMmIKY11uEwV~XS~vHJPh9V2dC7hsf538I,AQACAAE/site/0/",
-    "freenet:USK@CXyhHjqoP9yWXcaZWXJ2iXVUeSaxDi7pU-nPUJrg4vE,ZyLuum~BNkGr616D~yD1S0o22AzfwUTWy6Z4-~YzoMg,AQACAAE/site/0/",
-    "freenet:USK@UHw2~SAEv7EAmfhb4SO6EVLWRo6NHbKUte-BJ72isCg,v6y94~qHCRvfKdM-90dxC2rHSvykgyEYoZLp45a26NU,AQACAAE/site/0/",
+    "hyphanet:USK@bt6o0REPxC8USh5IM1wg65p1DG-h8pqlZQFsdrkG6HU,1-YF9KPJiEPhktMFkfWZDYDSh2sWvqHm1bWbdloltP4,AQACAAE/mywiki/0/",
+    "hyphanet:USK@b2qNKBPnGtx9gDBDqiNCXzxQWZZVX-13Ndo---SBK80,F4F-zo2vAfMmIKY11uEwV~XS~vHJPh9V2dC7hsf538I,AQACAAE/site/0/",
+    "hyphanet:USK@CXyhHjqoP9yWXcaZWXJ2iXVUeSaxDi7pU-nPUJrg4vE,ZyLuum~BNkGr616D~yD1S0o22AzfwUTWy6Z4-~YzoMg,AQACAAE/site/0/",
+    "hyphanet:USK@UHw2~SAEv7EAmfhb4SO6EVLWRo6NHbKUte-BJ72isCg,v6y94~qHCRvfKdM-90dxC2rHSvykgyEYoZLp45a26NU,AQACAAE/site/0/",
     // Additional freesites from hyphanet directory
-    "freenet:USK@7hOXSNsndWPqw1p64zv6xYaAR10P3CceoYuiriatOpQ,McLE4bFGqqSA4j3JlJvxZQXOh-ESaKCLa6NM2VAscY4,AQACAAE/freesite/0/",
-    "freenet:USK@McZbP~X3e4JCf7rCaRPo14rgSy5-HqBEf8Lb8NqMSXM,aCSLc34wGijYloclb3P~8X7BuwK~PIqD3A2j3ICwsW4,AQACAAE/freesite/0/",
-    "freenet:USK@cvZEZFWynx~4hmakaimts4Ruusl9mEUpU6mSvNvZ9p8,K2Xopc6GWPkKrs27EDuqzTcca2bE5H2YAXw0qKnkON4,AQACAAE/blog/0/",
-    "freenet:USK@CjdrIg9kZn0mzmKTPuofupZmsdvB5Ruas7wyZrekRmM,uhrRUrkJ18IOGtTraf4wVQ1LSlweOXcipZ9BNwv4Kgw,AQACAAE/site/0/",
-    "freenet:USK@80xMKNcgl8~1Tc3BPp6o3Md7QBlxUM80zp04TK93Ng4,Jr9J3x46YInFSUjeGdVRpXAUXqWHhDLuxXg1VpZaO1Y,AQACAAE/content/0/",
-    "freenet:USK@7vBUpbd1AJPX-L9wfR-nzeDEZye7PyXqyS5nzi1D~U4,NZOuYXNJpX22lvEqd~OyO-uJZsrvZoirjZaMsPgax7k,AQACAAE/homepage/0/",
+    "hyphanet:USK@7hOXSNsndWPqw1p64zv6xYaAR10P3CceoYuiriatOpQ,McLE4bFGqqSA4j3JlJvxZQXOh-ESaKCLa6NM2VAscY4,AQACAAE/freesite/0/",
+    "hyphanet:USK@McZbP~X3e4JCf7rCaRPo14rgSy5-HqBEf8Lb8NqMSXM,aCSLc34wGijYloclb3P~8X7BuwK~PIqD3A2j3ICwsW4,AQACAAE/freesite/0/",
+    "hyphanet:USK@cvZEZFWynx~4hmakaimts4Ruusl9mEUpU6mSvNvZ9p8,K2Xopc6GWPkKrs27EDuqzTcca2bE5H2YAXw0qKnkON4,AQACAAE/blog/0/",
+    "hyphanet:USK@CjdrIg9kZn0mzmKTPuofupZmsdvB5Ruas7wyZrekRmM,uhrRUrkJ18IOGtTraf4wVQ1LSlweOXcipZ9BNwv4Kgw,AQACAAE/site/0/",
+    "hyphanet:USK@80xMKNcgl8~1Tc3BPp6o3Md7QBlxUM80zp04TK93Ng4,Jr9J3x46YInFSUjeGdVRpXAUXqWHhDLuxXg1VpZaO1Y,AQACAAE/content/0/",
+    "hyphanet:USK@7vBUpbd1AJPX-L9wfR-nzeDEZye7PyXqyS5nzi1D~U4,NZOuYXNJpX22lvEqd~OyO-uJZsrvZoirjZaMsPgax7k,AQACAAE/homepage/0/",
 ];
 
 // Lokinet SNApp seeds
@@ -119,7 +124,7 @@ pub fn get_all_seeds() -> Vec<&'static str> {
     seeds.extend_from_slice(TOR_SEEDS);
     seeds.extend_from_slice(I2P_SEEDS);
     seeds.extend_from_slice(ZERONET_SEEDS);
-    seeds.extend_from_slice(FREENET_SEEDS);
+    seeds.extend_from_slice(HYPHANET_SEEDS);
     seeds.extend_from_slice(LOKINET_SEEDS);
     seeds
 }

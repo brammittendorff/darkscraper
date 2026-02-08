@@ -91,7 +91,7 @@ pub struct ExtractedLink {
     pub is_onion: bool,
     pub is_i2p: bool,
     pub is_zeronet: bool,
-    pub is_freenet: bool,
+    pub is_hyphanet: bool,
     pub is_lokinet: bool,
     pub is_external: bool,
 }

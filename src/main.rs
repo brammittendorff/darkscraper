@@ -57,13 +57,13 @@ async fn main() -> Result<()> {
     if let Ok(v) = std::env::var("ZERONET_ENABLED") {
         config.zeronet.enabled = v != "0" && v.to_lowercase() != "false";
     }
-    if let Ok(v) = std::env::var("FREENET_WORKERS") {
+    if let Ok(v) = std::env::var("HYPHANET_WORKERS") {
         if let Some(n) = parse_workers(&v) {
-            config.freenet.max_concurrency = n;
+            config.hyphanet.max_concurrency = n;
         }
     }
-    if let Ok(v) = std::env::var("FREENET_ENABLED") {
-        config.freenet.enabled = v != "0" && v.to_lowercase() != "false";
+    if let Ok(v) = std::env::var("HYPHANET_ENABLED") {
+        config.hyphanet.enabled = v != "0" && v.to_lowercase() != "false";
     }
     if let Ok(v) = std::env::var("LOKINET_WORKERS") {
         if let Some(n) = parse_workers(&v) {
@@ -97,9 +97,9 @@ async fn main() -> Result<()> {
             config.zeronet.http_proxies = (1..=n).map(|i| format!("zeronet{}:43110", i)).collect();
         }
     }
-    if let Ok(v) = std::env::var("FREENET_INSTANCES") {
+    if let Ok(v) = std::env::var("HYPHANET_INSTANCES") {
         if let Ok(n) = v.parse::<usize>() {
-            config.freenet.http_proxies = (1..=n).map(|i| format!("freenet{}:8888", i)).collect();
+            config.hyphanet.http_proxies = (1..=n).map(|i| format!("hyphanet{}:8888", i)).collect();
         }
     }
     if let Ok(v) = std::env::var("LOKINET_INSTANCES") {

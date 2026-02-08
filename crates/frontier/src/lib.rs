@@ -114,7 +114,7 @@ impl CrawlFrontier {
                 let normalized = Self::normalize_url(&url);
                 bloom.insert(&normalized);
             } else {
-                // For non-parseable URLs (e.g. freenet keys), use as-is
+                // For non-parseable URLs (e.g. hyphanet keys), use as-is
                 bloom.insert(url_str.to_lowercase());
             }
         }
@@ -129,6 +129,76 @@ impl CrawlFrontier {
             normalized.set_path(&path[..path.len() - 1]);
         }
         normalized.to_string().to_lowercase()
+    }
+
+    /// Calculate priority based on URL characteristics and depth.
+    /// Higher priority = dequeued first.
+    ///
+    /// Priority tiers:
+    /// - Tier 1 (2.0+): Cryptographic addresses (permanent, can't be hijacked)
+    /// - Tier 2 (1.0-2.0): Human-readable names (addressbook/ONS/namecoin)
+    /// - Depth penalty: Divided by (depth + 2) to prioritize shallower URLs
+    pub fn calculate_priority(url: &Url, depth: u32) -> f64 {
+        let host = url.host_str().unwrap_or("");
+        let base_priority = Self::classify_address_type(host);
+
+        // Depth penalty: shallower URLs get higher priority
+        base_priority / (depth as f64 + 2.0)
+    }
+
+    /// Classify address type to determine base priority.
+    /// Returns 2.0 for cryptographic addresses, 1.0 for human-readable.
+    pub fn classify_address_type(host: &str) -> f64 {
+        // TOR: All .onion v3 addresses are cryptographic (56 base32 chars)
+        if let Some(name) = host.strip_suffix(".onion") {
+            if name.len() == 56 && name.chars().all(|c| c.is_ascii_lowercase() || ('2'..='7').contains(&c)) {
+                return 2.0; // v3 onion (cryptographic)
+            }
+            return 1.0; // v2 or malformed
+        }
+
+        // I2P: .b32.i2p = cryptographic, short .i2p = human-readable
+        if let Some(name) = host.strip_suffix(".b32.i2p") {
+            if (name.len() == 52 || name.len() >= 56) && name.chars().all(|c| c.is_ascii_lowercase() || ('2'..='7').contains(&c)) {
+                return 2.0; // Cryptographic b32 address
+            }
+        } else if host.ends_with(".i2p") {
+            return 1.0; // Human-readable addressbook name
+        }
+
+        // HYPHANET: All USK@/SSK@/CHK@ addresses are cryptographic
+        let url_str = host.to_lowercase();
+        if url_str.contains("usk@") || url_str.contains("ssk@") || url_str.contains("chk@") {
+            return 2.0; // Cryptographic Hyphanet key
+        }
+
+        // ZERONET: Bitcoin address format = cryptographic, short name = Namecoin
+        if let Some(name) = host.strip_suffix(".bit") {
+            // Bitcoin address: starts with 1 or 3, length 26-35
+            if (name.starts_with('1') || name.starts_with('3')) && name.len() >= 26 && name.len() <= 35 {
+                // Additional check: all base58 characters
+                if name.chars().all(|c| {
+                    c.is_ascii_digit() ||
+                    ('A'..='H').contains(&c) || ('J'..='N').contains(&c) ||
+                    ('P'..='Z').contains(&c) || ('a'..='k').contains(&c) ||
+                    ('m'..='z').contains(&c)
+                }) {
+                    return 2.0; // Cryptographic Bitcoin address
+                }
+            }
+            return 1.0; // Human-readable Namecoin domain
+        }
+
+        // LOKINET: 52-char = cryptographic, short = ONS name
+        if let Some(name) = host.strip_suffix(".loki") {
+            if name.len() == 52 && name.chars().all(|c| c.is_ascii_lowercase()) {
+                return 2.0; // Cryptographic 52-char address
+            }
+            return 1.0; // Human-readable ONS name
+        }
+
+        // Default: treat as human-readable
+        1.0
     }
 
     /// Get or create the network queue for a given network.
@@ -295,12 +365,13 @@ impl CrawlFrontier {
         for url_str in urls {
             if let Ok(url) = Url::parse(url_str) {
                 let normalized = Self::normalize_url(&url);
+                let priority = Self::calculate_priority(&url, 0);
                 let job = CrawlJob {
                     url,
                     depth: 0,
                     source_url: None,
                     network: network.to_string(),
-                    priority: 1.0,
+                    priority,
                     retry_count: 0,
                 };
 

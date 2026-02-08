@@ -8,7 +8,7 @@
     { "title": "Search", "url": "/d/darkscraper-search", "type": "link", "icon": "search" },
     { "title": "I2P Dashboard", "url": "/d/darkscraper-i2p", "type": "link" },
     { "title": "ZeroNet Dashboard", "url": "/d/darkscraper-zeronet", "type": "link" },
-    { "title": "Freenet Dashboard", "url": "/d/darkscraper-freenet", "type": "link" },
+    { "title": "Hyphanet Dashboard", "url": "/d/darkscraper-hyphanet", "type": "link" },
     { "title": "Lokinet Dashboard", "url": "/d/darkscraper-lokinet", "type": "link" }
   ],
   "panels": [

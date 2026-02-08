@@ -73,78 +73,83 @@ services:
       retries: 10
       start_period: 30s
 
-  # --- I2P instances (3 always-on, 2 extra via profile) ---
+  # --- I2P instances (3 always-on Java I2P, 2 extra via profile) ---
+  # Using official Java I2P router for better network connectivity and active network
   i2p1:
     build: ./docker/i2p
+    environment:
+      JVM_XMX: 768m
+      IP_ADDR: 0.0.0.0
     volumes:
-      - i2p1data:/var/lib/i2pd
-      - ./config/i2pd.conf:/var/lib/i2pd/i2pd.conf:ro
+      - i2p1data:/i2p/.i2p
     healthcheck:
-      test: ["CMD-SHELL", "netstat -tuln | grep -q 4444 || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 40
-      start_period: 300s
+      test: ["CMD-SHELL", "wget --spider --timeout=10 http://127.0.0.1:7657/ 2>&1 | grep -q '200 OK' || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 30
+      start_period: 600s
 
   i2p2:
     build: ./docker/i2p
+    environment:
+      JVM_XMX: 768m
+      IP_ADDR: 0.0.0.0
     volumes:
-      - i2p2data:/var/lib/i2pd
-      - ./config/i2pd.conf:/var/lib/i2pd/i2pd.conf:ro
+      - i2p2data:/i2p/.i2p
+      - ./docker/i2p/router.config:/i2p/.i2p/router.config
     healthcheck:
-      test: ["CMD-SHELL", "netstat -tuln | grep -q 4444 || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 40
-      start_period: 300s
+      test: ["CMD-SHELL", "wget --spider --timeout=10 http://127.0.0.1:7657/ 2>&1 | grep -q '200 OK' || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 30
+      start_period: 600s
 
   i2p3:
     build: ./docker/i2p
+    environment:
+      JVM_XMX: 768m
+      IP_ADDR: 0.0.0.0
     volumes:
-      - i2p3data:/var/lib/i2pd
-      - ./config/i2pd.conf:/var/lib/i2pd/i2pd.conf:ro
+      - i2p3data:/i2p/.i2p
+      - ./docker/i2p/router.config:/i2p/.i2p/router.config
     healthcheck:
-      test: ["CMD-SHELL", "netstat -tuln | grep -q 4444 || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 40
-      start_period: 300s
+      test: ["CMD-SHELL", "wget --spider --timeout=10 http://127.0.0.1:7657/ 2>&1 | grep -q '200 OK' || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 30
+      start_period: 600s
 
   i2p4:
-    image: divax/i2p:current
+    build: ./docker/i2p
     profiles: [i2p-extra]
     environment:
-      ENABLE_HTTPPROXY: 1
-      ENABLE_SOCKSPROXY: 1
-      ENABLE_SAM: 1
-      BANDWIDTH: "O"
+      JVM_XMX: 768m
+      IP_ADDR: 0.0.0.0
     volumes:
-      - i2p4data:/home/i2pd/data
-      - ./config/i2pd.conf:/home/i2pd/conf/i2pd.conf:ro
+      - i2p4data:/i2p/.i2p
+      - ./docker/i2p/router.config:/i2p/.i2p/router.config
     healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 4444 2>/dev/null || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 40
-      start_period: 300s
+      test: ["CMD-SHELL", "wget --spider --timeout=10 http://127.0.0.1:7657/ 2>&1 | grep -q '200 OK' || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 30
+      start_period: 600s
 
   i2p5:
-    image: divax/i2p:current
+    build: ./docker/i2p
     profiles: [i2p-extra]
     environment:
-      ENABLE_HTTPPROXY: 1
-      ENABLE_SOCKSPROXY: 1
-      ENABLE_SAM: 1
-      BANDWIDTH: "O"
+      JVM_XMX: 768m
+      IP_ADDR: 0.0.0.0
     volumes:
-      - i2p5data:/home/i2pd/data
-      - ./config/i2pd.conf:/home/i2pd/conf/i2pd.conf:ro
+      - i2p5data:/i2p/.i2p
+      - ./docker/i2p/router.config:/i2p/.i2p/router.config
     healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 4444 2>/dev/null || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 40
-      start_period: 300s
+      test: ["CMD-SHELL", "wget --spider --timeout=10 http://127.0.0.1:7657/ 2>&1 | grep -q '200 OK' || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 30
+      start_period: 600s
 
   # --- ZeroNet instances (3 always-on, 2 extra via profile) ---
   zeronet1:
@@ -207,14 +212,14 @@ services:
       retries: 10
       start_period: 60s
 
-  # --- Freenet/Hyphanet instances (3 always-on, 2 extra via profile) ---
+  # --- Hyphanet instances (3 always-on, 2 extra via profile) ---
   # FProxy gateway on port 8888, needs allowedhosts for Docker network access
-  freenet1:
-    build: ./docker/freenet
+  hyphanet1:
+    build: ./docker/hyphanet
     environment:
       allowedhosts: "0.0.0.0/0"
     volumes:
-      - freenet1data:/data
+      - hyphanet1data:/data
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8888/ 2>/dev/null || exit 1"]
       interval: 15s
@@ -222,12 +227,12 @@ services:
       retries: 20
       start_period: 180s
 
-  freenet2:
-    build: ./docker/freenet
+  hyphanet2:
+    build: ./docker/hyphanet
     environment:
       allowedhosts: "0.0.0.0/0"
     volumes:
-      - freenet2data:/data
+      - hyphanet2data:/data
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8888/ 2>/dev/null || exit 1"]
       interval: 15s
@@ -235,12 +240,12 @@ services:
       retries: 20
       start_period: 180s
 
-  freenet3:
-    build: ./docker/freenet
+  hyphanet3:
+    build: ./docker/hyphanet
     environment:
       allowedhosts: "0.0.0.0/0"
     volumes:
-      - freenet3data:/data
+      - hyphanet3data:/data
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8888/ 2>/dev/null || exit 1"]
       interval: 15s
@@ -248,13 +253,13 @@ services:
       retries: 20
       start_period: 180s
 
-  freenet4:
-    build: ./docker/freenet
-    profiles: [freenet-extra]
+  hyphanet4:
+    build: ./docker/hyphanet
+    profiles: [hyphanet-extra]
     environment:
       allowedhosts: "0.0.0.0/0"
     volumes:
-      - freenet4data:/data
+      - hyphanet4data:/data
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8888/ 2>/dev/null || exit 1"]
       interval: 15s
@@ -262,13 +267,13 @@ services:
       retries: 20
       start_period: 180s
 
-  freenet5:
-    build: ./docker/freenet
-    profiles: [freenet-extra]
+  hyphanet5:
+    build: ./docker/hyphanet
+    profiles: [hyphanet-extra]
     environment:
       allowedhosts: "0.0.0.0/0"
     volumes:
-      - freenet5data:/data
+      - hyphanet5data:/data
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8888/ 2>/dev/null || exit 1"]
       interval: 15s
@@ -370,16 +375,16 @@ services:
       tor3:
         condition: service_healthy
       i2p1:
-        condition: service_healthy
+        condition: service_started
       i2p2:
-        condition: service_healthy
+        condition: service_started
       i2p3:
-        condition: service_healthy
-      freenet1:
         condition: service_started
-      freenet2:
+      hyphanet1:
         condition: service_started
-      freenet3:
+      hyphanet2:
+        condition: service_started
+      hyphanet3:
         condition: service_started
       lokinet1:
         condition: service_started
@@ -402,7 +407,7 @@ services:
       TOR_INSTANCES: ${TOR_INSTANCES:-3}
       I2P_INSTANCES: ${I2P_INSTANCES:-3}
       ZERONET_INSTANCES: ${ZERONET_INSTANCES:-3}
-      FREENET_INSTANCES: ${FREENET_INSTANCES:-3}
+      HYPHANET_INSTANCES: ${HYPHANET_INSTANCES:-3}
       LOKINET_INSTANCES: ${LOKINET_INSTANCES:-3}
       # --- Network worker tuning (override via docker compose up) ---
       TOR_WORKERS: ${TOR_WORKERS:-32}
@@ -411,8 +416,8 @@ services:
       I2P_ENABLED: ${I2P_ENABLED:-true}
       ZERONET_WORKERS: ${ZERONET_WORKERS:-8}
       ZERONET_ENABLED: ${ZERONET_ENABLED:-true}
-      FREENET_WORKERS: ${FREENET_WORKERS:-8}
-      FREENET_ENABLED: ${FREENET_ENABLED:-true}
+      HYPHANET_WORKERS: ${HYPHANET_WORKERS:-8}
+      HYPHANET_ENABLED: ${HYPHANET_ENABLED:-true}
       LOKINET_WORKERS: ${LOKINET_WORKERS:-8}
       LOKINET_ENABLED: ${LOKINET_ENABLED:-true}
       MAX_DEPTH: ${MAX_DEPTH:-10}
@@ -436,11 +441,11 @@ volumes:
   zeronet3data:
   zeronet4data:
   zeronet5data:
-  freenet1data:
-  freenet2data:
-  freenet3data:
-  freenet4data:
-  freenet5data:
+  hyphanet1data:
+  hyphanet2data:
+  hyphanet3data:
+  hyphanet4data:
+  hyphanet5data:
   lokinet1data:
   lokinet2data:
   lokinet3data:

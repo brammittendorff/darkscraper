@@ -133,7 +133,7 @@ impl Storage {
             let mut all_onion: Vec<bool> = Vec::new();
             let mut all_i2p: Vec<bool> = Vec::new();
             let mut all_zeronet: Vec<bool> = Vec::new();
-            let mut all_freenet: Vec<bool> = Vec::new();
+            let mut all_hyphanet: Vec<bool> = Vec::new();
             let mut all_lokinet: Vec<bool> = Vec::new();
             for link in &page.links {
                 all_targets.push(link.url.clone());
@@ -141,11 +141,11 @@ impl Storage {
                 all_onion.push(link.is_onion);
                 all_i2p.push(link.is_i2p);
                 all_zeronet.push(link.is_zeronet);
-                all_freenet.push(link.is_freenet);
+                all_hyphanet.push(link.is_hyphanet);
                 all_lokinet.push(link.is_lokinet);
             }
             sqlx::query(
-                "INSERT INTO links (source_page_id, target_url, anchor_text, is_onion, is_i2p, is_zeronet, is_freenet, is_lokinet)
+                "INSERT INTO links (source_page_id, target_url, anchor_text, is_onion, is_i2p, is_zeronet, is_hyphanet, is_lokinet)
                  SELECT $1, * FROM UNNEST($2::text[], $3::text[], $4::bool[], $5::bool[], $6::bool[], $7::bool[], $8::bool[])"
             )
             .bind(page_id)
@@ -154,7 +154,7 @@ impl Storage {
             .bind(&all_onion)
             .bind(&all_i2p)
             .bind(&all_zeronet)
-            .bind(&all_freenet)
+            .bind(&all_hyphanet)
             .bind(&all_lokinet)
             .execute(&self.pool)
             .await?;

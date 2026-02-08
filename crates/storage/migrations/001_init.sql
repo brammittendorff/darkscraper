@@ -58,12 +58,12 @@ CREATE TABLE IF NOT EXISTS links (
     is_onion BOOLEAN,
     is_i2p BOOLEAN,
     is_zeronet BOOLEAN,
-    is_freenet BOOLEAN,
+    is_hyphanet BOOLEAN,
     is_lokinet BOOLEAN
 );
 
--- Add columns for existing databases that don't have them yet
-ALTER TABLE links ADD COLUMN IF NOT EXISTS is_freenet BOOLEAN;
+-- Add columns for existing databases that don't have them yet (migration safety)
+ALTER TABLE links ADD COLUMN IF NOT EXISTS is_hyphanet BOOLEAN;
 ALTER TABLE links ADD COLUMN IF NOT EXISTS is_lokinet BOOLEAN;
 
 CREATE INDEX IF NOT EXISTS idx_links_target ON links(target_url);

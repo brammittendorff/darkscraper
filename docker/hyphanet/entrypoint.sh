@@ -64,7 +64,7 @@ cd /fred
   # Step 1: WELCOME - choose low security (opennet enabled)
   curl -sf -X POST "http://127.0.0.1:8888/wizard/" \
     -F "formPassword=${FORM_PW}" \
-    -F "opennet=false" \
+    -F "opennet=true" \
     -F "step=WELCOME" \
     -F "incognito=false" \
     -F "presetLow=Choose low security" \

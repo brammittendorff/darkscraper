@@ -13,7 +13,7 @@ use darkscraper_discovery::{
     Correlation, CorrelationEngine, FormSpider, InfraProber, PatternMutator, SourceMiner,
 };
 use darkscraper_frontier::CrawlFrontier;
-use darkscraper_networks::{FreenetDriver, I2pDriver, LokinetDriver, TorDriver, ZeronetDriver};
+use darkscraper_networks::{HyphanetDriver, I2pDriver, LokinetDriver, TorDriver, ZeronetDriver};
 use darkscraper_parser::parse_response;
 use darkscraper_storage::Storage;
 
@@ -27,10 +27,31 @@ pub struct CrawlResult {
 
 /// Maximum retries for failed fetches before giving up on a URL.
 pub const MAX_FETCH_RETRIES: u32 = 4;
-pub const MAX_FETCH_RETRIES_FREENET: u32 = 12; // freenet needs much longer: 12 retries * 30s = ~6 min
+pub const MAX_FETCH_RETRIES_HYPHANET: u32 = 12; // hyphanet needs much longer: 12 retries * 30s = ~6 min
 
 /// Maximum pages to crawl per domain before deprioritizing
 pub const MAX_PAGES_PER_DOMAIN: usize = 100;
+
+/// Extract I2P base32 address from HTTP headers (X-I2P-Dest-B32) or response body.
+/// Returns the full b32.i2p URL if found.
+fn extract_i2p_base32(headers: &std::collections::HashMap<String, String>, body: &str, base_url: &url::Url) -> Option<String> {
+    // Check X-I2P-DestB32 or X-I2P-Dest-B32 header
+    if let Some(dest_b32) = headers.get("x-i2p-destb32").or_else(|| headers.get("x-i2p-dest-b32")) {
+        if dest_b32.len() >= 52 && dest_b32.contains(".b32.i2p") {
+            return Some(format!("http://{}/", dest_b32.trim()));
+        }
+    }
+
+    // Look for base32 addresses in the HTML content
+    // Pattern: [52+ base32 chars].b32.i2p
+    let re = regex::Regex::new(r"([a-z2-7]{52,56})\.b32\.i2p").ok()?;
+    if let Some(caps) = re.captures(body) {
+        let b32_addr = caps.get(0)?.as_str();
+        return Some(format!("http://{}/", b32_addr));
+    }
+
+    None
+}
 
 /// Create a CrawlJob from a discovered URL string, or None if it can't be handled.
 /// Only accepts http/https URLs with v3 .onion, .i2p, or .bit hosts.
@@ -42,9 +63,9 @@ fn make_crawl_job(
 ) -> Option<CrawlJob> {
     let parsed = url::Url::parse(url_str).ok()?;
 
-    // Allow http, https, and freenet schemes
+    // Allow http, https, hyphanet, and legacy freenet schemes
     let scheme = parsed.scheme();
-    if scheme != "http" && scheme != "https" && scheme != "freenet" {
+    if scheme != "http" && scheme != "https" && scheme != "hyphanet" && scheme != "freenet" {
         return None;
     }
 
@@ -52,13 +73,13 @@ fn make_crawl_job(
         return None;
     }
 
-    let network = if scheme == "freenet" {
-        // Reject bogus freenet://unknown/ URLs from SourceMiner resolving
-        // relative paths against opaque freenet: base URLs
-        if url_str.starts_with("freenet://") {
+    let network = if scheme == "hyphanet" || scheme == "freenet" {
+        // Reject bogus hyphanet://unknown/ or freenet://unknown/ URLs from SourceMiner
+        // resolving relative paths against opaque hyphanet: base URLs
+        if url_str.starts_with("hyphanet://") || url_str.starts_with("freenet://") {
             return None;
         }
-        "freenet"
+        "hyphanet"
     } else {
         let host = parsed.host_str().unwrap_or("");
         if host.ends_with(".onion") {
@@ -76,12 +97,13 @@ fn make_crawl_job(
             return None; // skip clearnet URLs
         }
     };
+    let priority = CrawlFrontier::calculate_priority(&parsed, depth + 1);
     Some(CrawlJob {
         url: parsed,
         depth: depth + 1,
         source_url: Some(source_url.to_string()),
         network: network.to_string(),
-        priority: 1.0 / (depth as f64 + 2.0),
+        priority,
         retry_count: 0,
     })
 }
@@ -109,8 +131,8 @@ pub async fn run_crawl(
     } else {
         0
     };
-    let freenet_workers = if config.freenet.enabled {
-        config.freenet.max_concurrency
+    let hyphanet_workers = if config.hyphanet.enabled {
+        config.hyphanet.max_concurrency
     } else {
         0
     };
@@ -120,7 +142,7 @@ pub async fn run_crawl(
         0
     };
     let total_workers =
-        tor_workers + i2p_workers + zeronet_workers + freenet_workers + lokinet_workers;
+        tor_workers + i2p_workers + zeronet_workers + hyphanet_workers + lokinet_workers;
 
     // Scale DB pool to worker count + headroom for storage task
     let pool_size = ((total_workers as u32) + 5).max(10);
@@ -168,8 +190,8 @@ pub async fn run_crawl(
 
     // Detect network from URL and add seeds
     for url_str in &seed_urls {
-        let network = if url_str.starts_with("freenet:") {
-            "freenet"
+        let network = if url_str.starts_with("hyphanet:") || url_str.starts_with("freenet:") {
+            "hyphanet"
         } else if url_str.contains(".onion") {
             "tor"
         } else if url_str.contains(".i2p") {
@@ -238,19 +260,19 @@ pub async fn run_crawl(
         }
     }
 
-    if config.freenet.enabled {
-        match FreenetDriver::new(
-            &config.freenet.http_proxies,
-            config.freenet.max_concurrency,
-            config.freenet.min_delay_seconds,
-            config.freenet.connect_timeout_seconds,
-            config.freenet.request_timeout_seconds,
+    if config.hyphanet.enabled {
+        match HyphanetDriver::new(
+            &config.hyphanet.http_proxies,
+            config.hyphanet.max_concurrency,
+            config.hyphanet.min_delay_seconds,
+            config.hyphanet.connect_timeout_seconds,
+            config.hyphanet.request_timeout_seconds,
         ) {
             Ok(driver) => {
-                info!(proxies = ?config.freenet.http_proxies, workers = freenet_workers, "freenet driver ready");
+                info!(proxies = ?config.hyphanet.http_proxies, workers = hyphanet_workers, "hyphanet driver ready");
                 drivers.push(Box::new(driver));
             }
-            Err(e) => error!("failed to create freenet driver: {}", e),
+            Err(e) => error!("failed to create hyphanet driver: {}", e),
         }
     }
 
@@ -278,7 +300,7 @@ pub async fn run_crawl(
         .request_timeout_seconds
         .max(config.i2p.request_timeout_seconds)
         .max(config.zeronet.request_timeout_seconds)
-        .max(config.freenet.request_timeout_seconds)
+        .max(config.hyphanet.request_timeout_seconds)
         .max(config.lokinet.request_timeout_seconds);
     let fetch_config = FetchConfig {
         timeout: std::time::Duration::from_secs(max_timeout),
@@ -371,7 +393,7 @@ pub async fn run_crawl(
         tor_workers,
         i2p_workers,
         zeronet_workers,
-        freenet_workers,
+        hyphanet_workers,
         lokinet_workers,
         "spawning crawl workers"
     );
@@ -395,8 +417,8 @@ pub async fn run_crawl(
             "i2p"
         } else if worker_id < tor_workers + i2p_workers + zeronet_workers {
             "zeronet"
-        } else if worker_id < tor_workers + i2p_workers + zeronet_workers + freenet_workers {
-            "freenet"
+        } else if worker_id < tor_workers + i2p_workers + zeronet_workers + hyphanet_workers {
+            "hyphanet"
         } else {
             "lokinet"
         };
@@ -408,17 +430,17 @@ pub async fn run_crawl(
             if worker_network != "tor" {
                 info!(worker_id, network = %worker_network, "waiting for network to be ready...");
 
-                // Freenet and I2P need HTTP probe to verify they're actually ready with peers/tunnels
+                // Hyphanet and I2P need HTTP probe to verify they're actually ready with peers/tunnels
                 // ZeroNet and Lokinet just need TCP port check
-                let needs_http_probe = worker_network == "freenet" || worker_network == "i2p";
+                let needs_http_probe = worker_network == "hyphanet" || worker_network == "i2p";
 
                 let mut probe_attempts = 0u32;
                 loop {
                     let is_ready = if needs_http_probe {
-                        // HTTP probe for Freenet/I2P - check it's actually ready, not just port open
+                        // HTTP probe for Hyphanet/I2P - check it's actually ready, not just port open
                         let probe_url = match worker_network.as_str() {
-                            "freenet" => std::env::var("FREENET_PROXY")
-                                .unwrap_or_else(|_| "freenet1:8888".to_string()),
+                            "hyphanet" => std::env::var("HYPHANET_PROXY")
+                                .unwrap_or_else(|_| "hyphanet1:8888".to_string()),
                             "i2p" => std::env::var("I2P_PROXY")
                                 .unwrap_or_else(|_| "i2p1:4444".to_string()),
                             _ => unreachable!(),
@@ -447,8 +469,8 @@ pub async fn run_crawl(
                                 })
                             }) {
                             Some(text) => {
-                                if worker_network == "freenet" {
-                                    // Freenet is ready when NOT showing setup wizard
+                                if worker_network == "hyphanet" {
+                                    // Hyphanet is ready when NOT showing setup wizard
                                     !text.contains("Set Up Freenet")
                                         && !text.contains("First Time Wizard")
                                 } else {
@@ -527,8 +549,8 @@ pub async fn run_crawl(
                             Ok(r) => r,
                             Err(e) => {
                                 let retries = job.retry_count;
-                                let max_retries = if job.network == "freenet" {
-                                    MAX_FETCH_RETRIES_FREENET
+                                let max_retries = if job.network == "hyphanet" {
+                                    MAX_FETCH_RETRIES_HYPHANET
                                 } else {
                                     MAX_FETCH_RETRIES
                                 };
@@ -635,6 +657,14 @@ pub async fn run_crawl(
                             info!(worker_id, url = %url, count = correlations.len(), "correlations");
                         }
 
+                        // 2.5. Extract I2P base32 address (if visiting human-readable .i2p)
+                        if url.host_str().map(|h| h.ends_with(".i2p") && !h.ends_with(".b32.i2p")).unwrap_or(false) {
+                            if let Some(b32_url) = extract_i2p_base32(&resp.headers, &raw_html, &url) {
+                                info!(worker_id, url = %url, b32 = %b32_url, "discovered I2P base32 address");
+                                discovered_urls.push(b32_url);
+                            }
+                        }
+
                         // 3. Form spidering
                         if page.metadata.has_search_form {
                             let forms = FormSpider::find_search_forms(&raw_html, &url);
@@ -654,8 +684,8 @@ pub async fn run_crawl(
                         discovered_urls.extend(mutated);
 
                         // 5. Infrastructure probing (once per domain)
-                        // Skip for freenet — opaque scheme has no domain to probe
-                        if url.scheme() != "freenet" {
+                        // Skip for hyphanet — opaque scheme has no domain to probe
+                        if url.scheme() != "hyphanet" && url.scheme() != "freenet" {
                             let mut probed_set = probed.lock().await;
                             if !probed_set.contains(&domain) {
                                 probed_set.insert(domain.clone());

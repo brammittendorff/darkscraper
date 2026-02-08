@@ -121,8 +121,22 @@ fn extract_links(document: &Html, base_url: &Url, base_domain: &str) -> Vec<Extr
             let resolved = base_url.join(href).ok()?;
             let host = resolved.host_str().unwrap_or("");
 
+            // Convert FProxy gateway URLs back to hyphanet: scheme
+            // e.g., http://hyphanet1:8888/USK@.../site/0/ -> hyphanet:USK@.../site/0/
+            let (final_url, is_hyphanet_link) = if resolved.scheme() == "http" || resolved.scheme() == "https" {
+                let path = resolved.path();
+                if path.starts_with("/USK@") || path.starts_with("/SSK@") || path.starts_with("/CHK@") {
+                    // This is a Hyphanet key accessed via FProxy gateway
+                    (format!("hyphanet:{}", path), true)
+                } else {
+                    (resolved.to_string(), false)
+                }
+            } else {
+                (resolved.to_string(), resolved.scheme() == "hyphanet" || resolved.scheme() == "freenet")
+            };
+
             Some(ExtractedLink {
-                url: resolved.to_string(),
+                url: final_url,
                 anchor_text: {
                     let t = el.text().collect::<String>().trim().to_string();
                     if t.is_empty() {
@@ -134,7 +148,7 @@ fn extract_links(document: &Html, base_url: &Url, base_domain: &str) -> Vec<Extr
                 is_onion: host.ends_with(".onion"),
                 is_i2p: host.ends_with(".i2p"),
                 is_zeronet: host.ends_with(".bit"),
-                is_freenet: resolved.scheme() == "freenet",
+                is_hyphanet: is_hyphanet_link,
                 is_lokinet: host.ends_with(".loki"),
                 is_external: host != base_domain,
             })

@@ -50,8 +50,8 @@ static ZERONET_IN_TEXT_RE: Lazy<Regex> =
 static LOKI_IN_TEXT_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"https?://[a-zA-Z0-9\-]+\.loki[^\s"'<>]*"#).unwrap());
 
-static FREENET_IN_TEXT_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r#"freenet:[A-Z]{2,3}@[^\s"'<>]+"#).unwrap());
+static HYPHANET_IN_TEXT_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"(?:hyphanet|freenet):[A-Z]{2,3}@[^\s"'<>]+"#).unwrap());
 
 impl SourceMiner {
     /// Mine the raw HTML source for URLs beyond standard <a href> links.
@@ -126,7 +126,7 @@ impl SourceMiner {
         for m in LOKI_IN_TEXT_RE.find_iter(html) {
             urls.push(m.as_str().to_string());
         }
-        for m in FREENET_IN_TEXT_RE.find_iter(html) {
+        for m in HYPHANET_IN_TEXT_RE.find_iter(html) {
             urls.push(m.as_str().to_string());
         }
 
@@ -151,7 +151,7 @@ fn extract_urls_from_text(text: &str, base_url: &Url) -> Vec<String> {
     for m in LOKI_IN_TEXT_RE.find_iter(text) {
         urls.push(m.as_str().to_string());
     }
-    for m in FREENET_IN_TEXT_RE.find_iter(text) {
+    for m in HYPHANET_IN_TEXT_RE.find_iter(text) {
         urls.push(m.as_str().to_string());
     }
     for cap in JS_URL_RE.captures_iter(text) {

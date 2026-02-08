@@ -376,7 +376,7 @@
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 58 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [{
-        "rawSql": "SELECT p.domain AS source_domain, l.target_url, l.anchor_text, l.is_onion, l.is_i2p, l.is_zeronet, l.is_freenet, l.is_lokinet FROM links l JOIN pages p ON l.source_page_id = p.id WHERE p.domain ILIKE '%${domain_search}%' AND '${domain_search}' != '' ORDER BY p.domain, l.target_url LIMIT 200;",
+        "rawSql": "SELECT p.domain AS source_domain, l.target_url, l.anchor_text, l.is_onion, l.is_i2p, l.is_zeronet, l.is_hyphanet, l.is_lokinet FROM links l JOIN pages p ON l.source_page_id = p.id WHERE p.domain ILIKE '%${domain_search}%' AND '${domain_search}' != '' ORDER BY p.domain, l.target_url LIMIT 200;",
         "format": "table",
         "refId": "A"
       }],

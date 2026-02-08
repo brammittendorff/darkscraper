@@ -6,7 +6,7 @@ pub struct AppConfig {
     pub tor: TorConfig,
     pub i2p: I2pConfig,
     pub zeronet: ZeronetConfig,
-    pub freenet: FreenetConfig,
+    pub hyphanet: HyphanetConfig,
     pub lokinet: LokinetConfig,
     pub database: DatabaseConfig,
     pub extraction: ExtractionConfig,
@@ -52,7 +52,7 @@ pub struct ZeronetConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct FreenetConfig {
+pub struct HyphanetConfig {
     pub enabled: bool,
     pub http_proxies: Vec<String>,
     pub max_concurrency: usize,

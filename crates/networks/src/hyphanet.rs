@@ -8,18 +8,20 @@ use url::Url;
 
 use darkscraper_core::{CrawlError, FetchConfig, FetchResponse, NetworkDriver};
 
-/// Freenet (Hyphanet) driver.
+/// Hyphanet (formerly Freenet) driver.
 ///
 /// Freesites are accessed through FProxy, a local HTTP gateway.
 /// URLs use cryptographic keys rather than domain names:
-///   freenet:USK@<key>/<name>/<version>/
-///   freenet:SSK@<key>/<name>
-///   freenet:CHK@<key>
-///   freenet:KSK@<keyword>
+///   hyphanet:USK@<key>/<name>/<version>/
+///   hyphanet:SSK@<key>/<name>
+///   hyphanet:CHK@<key>
+///   hyphanet:KSK@<keyword>
+///
+/// For backwards compatibility, the legacy freenet: scheme is also accepted.
 ///
 /// The driver rewrites these into FProxy gateway URLs:
-///   http://freenet1:8888/USK@<key>/<name>/<version>/
-pub struct FreenetDriver {
+///   http://hyphanet1:8888/USK@<key>/<name>/<version>/
+pub struct HyphanetDriver {
     clients: Vec<reqwest::Client>,
     proxy_bases: Vec<String>,
     counter: AtomicUsize,
@@ -27,7 +29,7 @@ pub struct FreenetDriver {
     min_delay: Duration,
 }
 
-impl FreenetDriver {
+impl HyphanetDriver {
     pub fn new(
         proxy_addrs: &[String],
         max_concurrency: usize,
@@ -37,7 +39,7 @@ impl FreenetDriver {
     ) -> Result<Self, CrawlError> {
         if proxy_addrs.is_empty() {
             return Err(CrawlError::Proxy(
-                "no freenet http proxies configured".into(),
+                "no hyphanet http proxies configured".into(),
             ));
         }
 
@@ -70,25 +72,30 @@ impl FreenetDriver {
         self.counter.fetch_add(1, Ordering::Relaxed) % self.clients.len()
     }
 
-    /// Convert a freenet: URI into an FProxy gateway URL.
-    /// Input:  freenet:USK@<key>/<name>/<ver>/
-    /// Output: http://freenet1:8888/USK@<key>/<name>/<ver>/
+    /// Convert a hyphanet: (or legacy freenet:) URI into an FProxy gateway URL.
+    /// Input:  hyphanet:USK@<key>/<name>/<ver>/
+    /// Output: http://hyphanet1:8888/USK@<key>/<name>/<ver>/
     fn to_proxy_url(&self, url: &Url, idx: usize) -> String {
-        // The URL is stored as freenet:<key_path>
+        // The URL is stored as hyphanet:<key_path> or freenet:<key_path>
         // url.path() gives us everything after the scheme
-        let key_path = &url.as_str()["freenet:".len()..];
+        let raw = url.as_str();
+        let key_path = if raw.starts_with("hyphanet:") {
+            &raw["hyphanet:".len()..]
+        } else {
+            &raw["freenet:".len()..]
+        };
         format!("{}/{}", self.proxy_bases[idx], key_path)
     }
 }
 
 #[async_trait]
-impl NetworkDriver for FreenetDriver {
+impl NetworkDriver for HyphanetDriver {
     fn name(&self) -> &str {
-        "freenet"
+        "hyphanet"
     }
 
     fn can_handle(&self, url: &Url) -> bool {
-        url.scheme() == "freenet"
+        url.scheme() == "freenet" || url.scheme() == "hyphanet"
     }
 
     async fn fetch(&self, url: &Url, config: &FetchConfig) -> Result<FetchResponse, CrawlError> {
@@ -96,7 +103,7 @@ impl NetworkDriver for FreenetDriver {
         let idx = self.next_index();
         let proxy_url = self.to_proxy_url(url, idx);
         let client = &self.clients[idx];
-        debug!(url = %url, proxy_url = %proxy_url, "fetching via freenet");
+        debug!(url = %url, proxy_url = %proxy_url, "fetching via hyphanet");
 
         let resp = client
             .get(&proxy_url)
@@ -104,7 +111,7 @@ impl NetworkDriver for FreenetDriver {
             .send()
             .await
             .map_err(|e| {
-                warn!(url = %url, error = %e, "freenet fetch failed");
+                warn!(url = %url, error = %e, "hyphanet fetch failed");
                 CrawlError::Network(e.to_string())
             })?;
 
@@ -163,7 +170,7 @@ impl NetworkDriver for FreenetDriver {
             body: body.to_vec(),
             content_type,
             fetched_at: chrono::Utc::now(),
-            network: "freenet".to_string(),
+            network: "hyphanet".to_string(),
             response_time_ms: elapsed.as_millis() as u64,
         })
     }

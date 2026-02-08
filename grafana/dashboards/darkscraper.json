@@ -9,7 +9,7 @@
     { "title": "Tor Dashboard", "url": "/d/darkscraper-tor", "type": "link" },
     { "title": "I2P Dashboard", "url": "/d/darkscraper-i2p", "type": "link" },
     { "title": "ZeroNet Dashboard", "url": "/d/darkscraper-zeronet", "type": "link" },
-    { "title": "Freenet Dashboard", "url": "/d/darkscraper-freenet", "type": "link" },
+    { "title": "Hyphanet Dashboard", "url": "/d/darkscraper-hyphanet", "type": "link" },
     { "title": "Lokinet Dashboard", "url": "/d/darkscraper-lokinet", "type": "link" }
   ],
   "panels": [
@@ -148,14 +148,14 @@
     },
     {
       "id": 23,
-      "title": "Freenet Overview",
+      "title": "Hyphanet Overview",
       "type": "stat",
       "gridPos": { "h": 4, "w": 12, "x": 0, "y": 8 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [
-        { "rawSql": "SELECT COUNT(*) AS \"Pages\" FROM pages WHERE network = 'freenet';", "format": "table", "refId": "A" },
-        { "rawSql": "SELECT COUNT(DISTINCT domain) AS \"Sites\" FROM pages WHERE network = 'freenet';", "format": "table", "refId": "B" },
-        { "rawSql": "SELECT COUNT(*) AS \"Entities\" FROM entities e JOIN pages p ON e.page_id = p.id WHERE p.network = 'freenet';", "format": "table", "refId": "C" }
+        { "rawSql": "SELECT COUNT(*) AS \"Pages\" FROM pages WHERE network = 'hyphanet';", "format": "table", "refId": "A" },
+        { "rawSql": "SELECT COUNT(DISTINCT domain) AS \"Sites\" FROM pages WHERE network = 'hyphanet';", "format": "table", "refId": "B" },
+        { "rawSql": "SELECT COUNT(*) AS \"Entities\" FROM entities e JOIN pages p ON e.page_id = p.id WHERE p.network = 'hyphanet';", "format": "table", "refId": "C" }
       ],
       "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "dark-yellow", "value": null }, { "color": "yellow", "value": 10 }] } }, "overrides": [] }
     },
@@ -182,7 +182,7 @@
         { "rawSql": "SELECT COUNT(DISTINCT domain) AS \"Tor Domains\" FROM pages WHERE network = 'tor';", "format": "table", "refId": "A" },
         { "rawSql": "SELECT COUNT(DISTINCT domain) AS \"I2P Domains\" FROM pages WHERE network = 'i2p';", "format": "table", "refId": "B" },
         { "rawSql": "SELECT COUNT(DISTINCT domain) AS \"ZeroNet Domains\" FROM pages WHERE network = 'zeronet';", "format": "table", "refId": "C" },
-        { "rawSql": "SELECT COUNT(DISTINCT domain) AS \"Freenet Sites\" FROM pages WHERE network = 'freenet';", "format": "table", "refId": "D" },
+        { "rawSql": "SELECT COUNT(DISTINCT domain) AS \"Hyphanet Sites\" FROM pages WHERE network = 'hyphanet';", "format": "table", "refId": "D" },
         { "rawSql": "SELECT COUNT(DISTINCT domain) AS \"Lokinet Domains\" FROM pages WHERE network = 'lokinet';", "format": "table", "refId": "E" }
       ],
       "fieldConfig": {
@@ -238,7 +238,7 @@
         { "rawSql": "SELECT date_trunc('minute', fetched_at) AS time, COUNT(*) AS tor FROM pages WHERE network = 'tor' GROUP BY 1 ORDER BY 1;", "format": "time_series", "refId": "A" },
         { "rawSql": "SELECT date_trunc('minute', fetched_at) AS time, COUNT(*) AS i2p FROM pages WHERE network = 'i2p' GROUP BY 1 ORDER BY 1;", "format": "time_series", "refId": "B" },
         { "rawSql": "SELECT date_trunc('minute', fetched_at) AS time, COUNT(*) AS zeronet FROM pages WHERE network = 'zeronet' GROUP BY 1 ORDER BY 1;", "format": "time_series", "refId": "C" },
-        { "rawSql": "SELECT date_trunc('minute', fetched_at) AS time, COUNT(*) AS freenet FROM pages WHERE network = 'freenet' GROUP BY 1 ORDER BY 1;", "format": "time_series", "refId": "D" },
+        { "rawSql": "SELECT date_trunc('minute', fetched_at) AS time, COUNT(*) AS hyphanet FROM pages WHERE network = 'hyphanet' GROUP BY 1 ORDER BY 1;", "format": "time_series", "refId": "D" },
         { "rawSql": "SELECT date_trunc('minute', fetched_at) AS time, COUNT(*) AS lokinet FROM pages WHERE network = 'lokinet' GROUP BY 1 ORDER BY 1;", "format": "time_series", "refId": "E" }
       ],
       "fieldConfig": {
@@ -290,7 +290,7 @@
         { "rawSql": "SELECT date_trunc('minute', fetched_at) AS time, AVG(response_time_ms)::int AS tor FROM pages WHERE network = 'tor' AND response_time_ms > 0 GROUP BY 1 ORDER BY 1;", "format": "time_series", "refId": "A" },
         { "rawSql": "SELECT date_trunc('minute', fetched_at) AS time, AVG(response_time_ms)::int AS i2p FROM pages WHERE network = 'i2p' AND response_time_ms > 0 GROUP BY 1 ORDER BY 1;", "format": "time_series", "refId": "B" },
         { "rawSql": "SELECT date_trunc('minute', fetched_at) AS time, AVG(response_time_ms)::int AS zeronet FROM pages WHERE network = 'zeronet' AND response_time_ms > 0 GROUP BY 1 ORDER BY 1;", "format": "time_series", "refId": "C" },
-        { "rawSql": "SELECT date_trunc('minute', fetched_at) AS time, AVG(response_time_ms)::int AS freenet FROM pages WHERE network = 'freenet' AND response_time_ms > 0 GROUP BY 1 ORDER BY 1;", "format": "time_series", "refId": "D" },
+        { "rawSql": "SELECT date_trunc('minute', fetched_at) AS time, AVG(response_time_ms)::int AS hyphanet FROM pages WHERE network = 'hyphanet' AND response_time_ms > 0 GROUP BY 1 ORDER BY 1;", "format": "time_series", "refId": "D" },
         { "rawSql": "SELECT date_trunc('minute', fetched_at) AS time, AVG(response_time_ms)::int AS lokinet FROM pages WHERE network = 'lokinet' AND response_time_ms > 0 GROUP BY 1 ORDER BY 1;", "format": "time_series", "refId": "E" }
       ],
       "fieldConfig": {

@@ -28,9 +28,9 @@ min_delay_seconds = 0
 connect_timeout_seconds = 30
 request_timeout_seconds = 60
 
-[freenet]
+[hyphanet]
 enabled = true
-http_proxies = ["freenet1:8888", "freenet2:8888", "freenet3:8888"]
+http_proxies = ["hyphanet1:8888", "hyphanet2:8888", "hyphanet3:8888"]
 max_concurrency = 8
 min_delay_seconds = 0
 connect_timeout_seconds = 120
