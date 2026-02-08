@@ -77,18 +77,13 @@ impl NetworkDriver for TorDriver {
         let client = self.next_client();
         debug!(url = %url, "fetching via tor");
 
-        let resp = client
-            .get(url.as_str())
-            .send()
-            .await
-            .map_err(|e| {
-                warn!(url = %url, error = %e, "tor fetch failed");
-                CrawlError::Network(e.to_string())
-            })?;
+        let resp = client.get(url.as_str()).send().await.map_err(|e| {
+            warn!(url = %url, error = %e, "tor fetch failed");
+            CrawlError::Network(e.to_string())
+        })?;
 
         let status = resp.status().as_u16();
-        let final_url = Url::parse(resp.url().as_str())
-            .unwrap_or_else(|_| url.clone());
+        let final_url = Url::parse(resp.url().as_str()).unwrap_or_else(|_| url.clone());
 
         let mut headers = HashMap::new();
         for (k, v) in resp.headers() {

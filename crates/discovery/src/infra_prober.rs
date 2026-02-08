@@ -43,17 +43,59 @@ const _MISCONFIG_PROBES: &[(&str, &str)] = &[
 /// Dark-web-specific directory wordlist.
 #[allow(dead_code)]
 const _DARKWEB_PATHS: &[&str] = &[
-    "/admin", "/login", "/panel", "/dashboard", "/cp",
-    "/forum", "/board", "/chat", "/messages", "/inbox",
-    "/market", "/shop", "/store", "/products", "/listings",
-    "/paste", "/upload", "/files", "/documents", "/dump",
-    "/api", "/v1", "/v2", "/graphql", "/rest",
-    "/mirror", "/backup", "/old", "/archive", "/test",
-    "/staff", "/mod", "/vendor", "/support", "/ticket",
-    "/pgp", "/keys", "/contact", "/about", "/faq", "/rules",
-    "/register", "/signup", "/invite", "/verify",
-    "/wallet", "/withdraw", "/deposit", "/escrow",
-    "/search", "/results", "/category", "/tag",
+    "/admin",
+    "/login",
+    "/panel",
+    "/dashboard",
+    "/cp",
+    "/forum",
+    "/board",
+    "/chat",
+    "/messages",
+    "/inbox",
+    "/market",
+    "/shop",
+    "/store",
+    "/products",
+    "/listings",
+    "/paste",
+    "/upload",
+    "/files",
+    "/documents",
+    "/dump",
+    "/api",
+    "/v1",
+    "/v2",
+    "/graphql",
+    "/rest",
+    "/mirror",
+    "/backup",
+    "/old",
+    "/archive",
+    "/test",
+    "/staff",
+    "/mod",
+    "/vendor",
+    "/support",
+    "/ticket",
+    "/pgp",
+    "/keys",
+    "/contact",
+    "/about",
+    "/faq",
+    "/rules",
+    "/register",
+    "/signup",
+    "/invite",
+    "/verify",
+    "/wallet",
+    "/withdraw",
+    "/deposit",
+    "/escrow",
+    "/search",
+    "/results",
+    "/category",
+    "/tag",
 ];
 
 /// Discovery-relevant probes only — robots.txt, sitemap, favicon.
@@ -86,7 +128,10 @@ impl InfraProber {
 
         for line in content.lines() {
             let line = line.trim();
-            if let Some(path) = line.strip_prefix("Disallow:").or_else(|| line.strip_prefix("Allow:")) {
+            if let Some(path) = line
+                .strip_prefix("Disallow:")
+                .or_else(|| line.strip_prefix("Allow:"))
+            {
                 let path = path.trim();
                 if !path.is_empty() && path != "/" {
                     if let Ok(url) = base_url.join(path) {

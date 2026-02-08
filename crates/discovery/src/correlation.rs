@@ -14,14 +14,11 @@ pub struct Correlation {
 }
 
 // Analytics / tracker ID patterns
-static GA_UA_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"UA-\d{4,10}-\d{1,4}").unwrap());
+static GA_UA_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"UA-\d{4,10}-\d{1,4}").unwrap());
 
-static GA_G_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"G-[A-Z0-9]{10,}").unwrap());
+static GA_G_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"G-[A-Z0-9]{10,}").unwrap());
 
-static GTM_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"GTM-[A-Z0-9]+").unwrap());
+static GTM_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"GTM-[A-Z0-9]+").unwrap());
 
 static FB_PIXEL_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"fbq\(\s*'init'\s*,\s*'(\d{15,})'").unwrap());
@@ -33,7 +30,11 @@ static PGP_BLOCK_RE: Lazy<Regex> = Lazy::new(|| {
 
 impl CorrelationEngine {
     /// Extract all correlatable fingerprints from a page's HTML and headers.
-    pub fn extract(domain: &str, html: &str, headers: &std::collections::HashMap<String, String>) -> Vec<Correlation> {
+    pub fn extract(
+        domain: &str,
+        html: &str,
+        headers: &std::collections::HashMap<String, String>,
+    ) -> Vec<Correlation> {
         let mut correlations = Vec::new();
 
         // Analytics IDs

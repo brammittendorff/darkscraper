@@ -28,7 +28,9 @@ impl LokinetDriver {
         request_timeout_seconds: u64,
     ) -> Result<Self, CrawlError> {
         if socks_addrs.is_empty() {
-            return Err(CrawlError::Proxy("no lokinet socks proxies configured".into()));
+            return Err(CrawlError::Proxy(
+                "no lokinet socks proxies configured".into(),
+            ));
         }
 
         let mut clients = Vec::with_capacity(socks_addrs.len());
@@ -80,18 +82,13 @@ impl NetworkDriver for LokinetDriver {
         let client = self.next_client();
         debug!(url = %url, "fetching via lokinet");
 
-        let resp = client
-            .get(url.as_str())
-            .send()
-            .await
-            .map_err(|e| {
-                warn!(url = %url, error = %e, "lokinet fetch failed");
-                CrawlError::Network(e.to_string())
-            })?;
+        let resp = client.get(url.as_str()).send().await.map_err(|e| {
+            warn!(url = %url, error = %e, "lokinet fetch failed");
+            CrawlError::Network(e.to_string())
+        })?;
 
         let status = resp.status().as_u16();
-        let final_url = Url::parse(resp.url().as_str())
-            .unwrap_or_else(|_| url.clone());
+        let final_url = Url::parse(resp.url().as_str()).unwrap_or_else(|_| url.clone());
 
         let mut headers = HashMap::new();
         for (k, v) in resp.headers() {

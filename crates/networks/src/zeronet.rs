@@ -25,7 +25,9 @@ impl ZeronetDriver {
         request_timeout_seconds: u64,
     ) -> Result<Self, CrawlError> {
         if proxy_addrs.is_empty() {
-            return Err(CrawlError::Proxy("no zeronet http proxies configured".into()));
+            return Err(CrawlError::Proxy(
+                "no zeronet http proxies configured".into(),
+            ));
         }
 
         let mut clients = Vec::with_capacity(proxy_addrs.len());
@@ -74,9 +76,7 @@ impl NetworkDriver for ZeronetDriver {
     }
 
     fn can_handle(&self, url: &Url) -> bool {
-        url.host_str()
-            .map(|h| h.ends_with(".bit"))
-            .unwrap_or(false)
+        url.host_str().map(|h| h.ends_with(".bit")).unwrap_or(false)
     }
 
     async fn fetch(&self, url: &Url, config: &FetchConfig) -> Result<FetchResponse, CrawlError> {

@@ -66,9 +66,7 @@ impl NetworkDriver for I2pDriver {
     }
 
     fn can_handle(&self, url: &Url) -> bool {
-        url.host_str()
-            .map(|h| h.ends_with(".i2p"))
-            .unwrap_or(false)
+        url.host_str().map(|h| h.ends_with(".i2p")).unwrap_or(false)
     }
 
     async fn fetch(&self, url: &Url, config: &FetchConfig) -> Result<FetchResponse, CrawlError> {
@@ -76,18 +74,13 @@ impl NetworkDriver for I2pDriver {
         let client = self.next_client();
         debug!(url = %url, "fetching via i2p");
 
-        let resp = client
-            .get(url.as_str())
-            .send()
-            .await
-            .map_err(|e| {
-                warn!(url = %url, error = %e, "i2p fetch failed");
-                CrawlError::Network(e.to_string())
-            })?;
+        let resp = client.get(url.as_str()).send().await.map_err(|e| {
+            warn!(url = %url, error = %e, "i2p fetch failed");
+            CrawlError::Network(e.to_string())
+        })?;
 
         let status = resp.status().as_u16();
-        let final_url = Url::parse(resp.url().as_str())
-            .unwrap_or_else(|_| url.clone());
+        let final_url = Url::parse(resp.url().as_str()).unwrap_or_else(|_| url.clone());
 
         let mut headers = HashMap::new();
         for (k, v) in resp.headers() {

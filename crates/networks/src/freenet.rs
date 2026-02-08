@@ -36,7 +36,9 @@ impl FreenetDriver {
         request_timeout_seconds: u64,
     ) -> Result<Self, CrawlError> {
         if proxy_addrs.is_empty() {
-            return Err(CrawlError::Proxy("no freenet http proxies configured".into()));
+            return Err(CrawlError::Proxy(
+                "no freenet http proxies configured".into(),
+            ));
         }
 
         let mut clients = Vec::with_capacity(proxy_addrs.len());
@@ -145,9 +147,7 @@ impl NetworkDriver for FreenetDriver {
                         || title.contains("Permanent Redirect");
                     if is_error {
                         warn!(url = %url, title = title, "FProxy error page, skipping");
-                        return Err(CrawlError::Network(
-                            format!("FProxy error page: {}", title),
-                        ));
+                        return Err(CrawlError::Network(format!("FProxy error page: {}", title)));
                     }
                 }
             }

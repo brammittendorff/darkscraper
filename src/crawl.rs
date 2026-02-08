@@ -1,20 +1,23 @@
 use std::collections::HashSet;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use anyhow::Result;
-use dashmap::DashSet;
+use dashmap::{DashMap, DashSet};
 use tokio::signal;
 use tokio::sync::{mpsc, Mutex};
 use tracing::{error, info, warn};
 
 use darkscraper_core::{AppConfig, CrawlJob, FetchConfig, NetworkDriver, PageData};
-use darkscraper_discovery::{Correlation, CorrelationEngine, FormSpider, InfraProber, PatternMutator, SourceMiner};
+use darkscraper_discovery::{
+    Correlation, CorrelationEngine, FormSpider, InfraProber, PatternMutator, SourceMiner,
+};
 use darkscraper_frontier::CrawlFrontier;
 use darkscraper_networks::{FreenetDriver, I2pDriver, LokinetDriver, TorDriver, ZeronetDriver};
 use darkscraper_parser::parse_response;
 use darkscraper_storage::Storage;
 
-use crate::seeds::{is_v3_onion, DEFAULT_SEEDS};
+use crate::seeds::{get_all_seeds, is_v3_onion};
 
 /// Bundled result from crawling + discovery on a single page.
 pub struct CrawlResult {
@@ -25,6 +28,9 @@ pub struct CrawlResult {
 /// Maximum retries for failed fetches before giving up on a URL.
 pub const MAX_FETCH_RETRIES: u32 = 4;
 pub const MAX_FETCH_RETRIES_FREENET: u32 = 12; // freenet needs much longer: 12 retries * 30s = ~6 min
+
+/// Maximum pages to crawl per domain before deprioritizing
+pub const MAX_PAGES_PER_DOMAIN: usize = 100;
 
 /// Create a CrawlJob from a discovered URL string, or None if it can't be handled.
 /// Only accepts http/https URLs with v3 .onion, .i2p, or .bit hosts.
@@ -88,12 +94,33 @@ pub async fn run_crawl(
 ) -> Result<()> {
     let max_depth = max_depth.unwrap_or(config.general.max_depth);
 
-    let tor_workers = if config.tor.enabled { config.tor.max_concurrency } else { 0 };
-    let i2p_workers = if config.i2p.enabled { config.i2p.max_concurrency } else { 0 };
-    let zeronet_workers = if config.zeronet.enabled { config.zeronet.max_concurrency } else { 0 };
-    let freenet_workers = if config.freenet.enabled { config.freenet.max_concurrency } else { 0 };
-    let lokinet_workers = if config.lokinet.enabled { config.lokinet.max_concurrency } else { 0 };
-    let total_workers = tor_workers + i2p_workers + zeronet_workers + freenet_workers + lokinet_workers;
+    let tor_workers = if config.tor.enabled {
+        config.tor.max_concurrency
+    } else {
+        0
+    };
+    let i2p_workers = if config.i2p.enabled {
+        config.i2p.max_concurrency
+    } else {
+        0
+    };
+    let zeronet_workers = if config.zeronet.enabled {
+        config.zeronet.max_concurrency
+    } else {
+        0
+    };
+    let freenet_workers = if config.freenet.enabled {
+        config.freenet.max_concurrency
+    } else {
+        0
+    };
+    let lokinet_workers = if config.lokinet.enabled {
+        config.lokinet.max_concurrency
+    } else {
+        0
+    };
+    let total_workers =
+        tor_workers + i2p_workers + zeronet_workers + freenet_workers + lokinet_workers;
 
     // Scale DB pool to worker count + headroom for storage task
     let pool_size = ((total_workers as u32) + 5).max(10);
@@ -101,7 +128,10 @@ pub async fn run_crawl(
     storage.run_migrations().await?;
 
     // Clear dead lokinet URLs from previous broken runs so they get re-crawled
-    let cleared = storage.clear_dead_urls_for_network("lokinet").await.unwrap_or(0);
+    let cleared = storage
+        .clear_dead_urls_for_network("lokinet")
+        .await
+        .unwrap_or(0);
     if cleared > 0 {
         info!(cleared, "cleared dead lokinet URLs from previous sessions");
     }
@@ -132,7 +162,7 @@ pub async fn run_crawl(
 
     // Default seeds if none provided
     if seed_urls.is_empty() {
-        seed_urls.extend(DEFAULT_SEEDS.iter().map(|s| s.to_string()));
+        seed_urls.extend(get_all_seeds().iter().map(|s| s.to_string()));
         info!("no seeds provided, using default seeds");
     }
 
@@ -151,7 +181,9 @@ pub async fn run_crawl(
         } else {
             "tor"
         };
-        frontier.add_seeds(std::slice::from_ref(url_str), network).await;
+        frontier
+            .add_seeds(std::slice::from_ref(url_str), network)
+            .await;
     }
     info!(count = seed_urls.len(), "seeds loaded");
 
@@ -241,7 +273,9 @@ pub async fn run_crawl(
     let drivers: Arc<Vec<Box<dyn NetworkDriver>>> = Arc::new(drivers);
     let storage = Arc::new(storage);
 
-    let max_timeout = config.tor.request_timeout_seconds
+    let max_timeout = config
+        .tor
+        .request_timeout_seconds
         .max(config.i2p.request_timeout_seconds)
         .max(config.zeronet.request_timeout_seconds)
         .max(config.freenet.request_timeout_seconds)
@@ -250,7 +284,8 @@ pub async fn run_crawl(
         timeout: std::time::Duration::from_secs(max_timeout),
         max_body_size: config.general.max_body_size_mb * 1024 * 1024,
         follow_redirects: true,
-        user_agent: "Mozilla/5.0 (Windows NT 10.0; rv:128.0) Gecko/20100101 Firefox/128.0".to_string(),
+        user_agent: "Mozilla/5.0 (Windows NT 10.0; rv:128.0) Gecko/20100101 Firefox/128.0"
+            .to_string(),
     };
 
     // Pipeline channels
@@ -260,11 +295,17 @@ pub async fn run_crawl(
     // Track which domains we've already probed for infrastructure
     let probed_domains: Arc<Mutex<HashSet<String>>> = Arc::new(Mutex::new(HashSet::new()));
 
+    // Track pages crawled per domain to prevent one domain from monopolizing the queue
+    let domain_page_count: Arc<DashMap<String, AtomicUsize>> = Arc::new(DashMap::new());
+
     // Dead URLs — permanently failed after max retries, never re-crawled.
     // Loaded from DB at startup so they persist across restarts.
     // Uses DashSet for lock-free concurrent reads from all workers.
     let dead_set_loaded = storage.load_dead_urls().await.unwrap_or_default();
-    info!(count = dead_set_loaded.len(), "loaded dead URLs from database");
+    info!(
+        count = dead_set_loaded.len(),
+        "loaded dead URLs from database"
+    );
     let dead_urls: Arc<DashSet<String>> = Arc::new(DashSet::new());
     for url in dead_set_loaded {
         dead_urls.insert(url);
@@ -325,7 +366,15 @@ pub async fn run_crawl(
     };
 
     // Spawn parallel crawl workers
-    info!(total_workers, tor_workers, i2p_workers, zeronet_workers, freenet_workers, lokinet_workers, "spawning crawl workers");
+    info!(
+        total_workers,
+        tor_workers,
+        i2p_workers,
+        zeronet_workers,
+        freenet_workers,
+        lokinet_workers,
+        "spawning crawl workers"
+    );
     let mut worker_handles = Vec::new();
 
     for worker_id in 0..total_workers {
@@ -333,6 +382,7 @@ pub async fn run_crawl(
         let drivers = Arc::clone(&drivers);
         let probed = Arc::clone(&probed_domains);
         let dead = Arc::clone(&dead_urls);
+        let domain_counts = Arc::clone(&domain_page_count);
         let crawl_storage = Arc::clone(&storage);
         let result_tx = result_tx.clone();
         let mut shutdown = shutdown_tx.subscribe();
@@ -354,33 +404,77 @@ pub async fn run_crawl(
 
         let handle = tokio::spawn(async move {
             // Startup probe: wait until our network proxy is reachable
-            // I2P especially takes 5-10 minutes to build tunnels, Freenet ~3 minutes
+            // I2P especially takes 5-10 minutes to build tunnels, Freenet 10-20 minutes
             if worker_network != "tor" {
                 info!(worker_id, network = %worker_network, "waiting for network proxy to become reachable...");
-                let probe_addr = match worker_network.as_str() {
-                    "i2p" => std::env::var("I2P_PROXY").unwrap_or_else(|_| "i2p1:4444".to_string()),
-                    "zeronet" => std::env::var("ZERONET_PROXY").unwrap_or_else(|_| "zeronet1:43110".to_string()),
-                    "freenet" => std::env::var("FREENET_PROXY").unwrap_or_else(|_| "freenet1:8888".to_string()),
-                    "lokinet" => std::env::var("LOKINET_PROXY").unwrap_or_else(|_| "lokinet1:1080".to_string()),
-                    _ => unreachable!(),
+                // Freenet needs much longer - up to 20 minutes to bootstrap
+                let max_probe_retries = if worker_network == "freenet" {
+                    80u32
+                } else {
+                    40u32
                 };
-                let max_probe_retries = 40u32; // 40 * 15s = 10 minutes max
                 let mut probe_attempts = 0u32;
+
+                // Freenet needs HTTP probe to verify it's actually ready, not just TCP port open
+                let needs_http_probe = worker_network == "freenet";
+
                 loop {
-                    // Use TCP connect probe — works for both HTTP and SOCKS5 proxies
-                    match tokio::net::TcpStream::connect(&probe_addr).await {
-                        Ok(_) => {
-                            info!(worker_id, network = %worker_network, "network proxy is reachable");
-                            break;
-                        }
-                        Err(_) => {
-                            probe_attempts += 1;
-                            if probe_attempts >= max_probe_retries {
-                                warn!(worker_id, network = %worker_network, "proxy unreachable after {} attempts, worker will skip", probe_attempts);
-                                return; // exit worker — this network is down
+                    let is_ready = if needs_http_probe {
+                        // HTTP probe for Freenet - check it's actually connected, not just showing setup page
+                        let probe_url = std::env::var("FREENET_PROXY")
+                            .unwrap_or_else(|_| "freenet1:8888".to_string());
+                        match reqwest::Client::builder()
+                            .timeout(std::time::Duration::from_secs(10))
+                            .build()
+                            .ok()
+                            .and_then(|client| {
+                                tokio::task::block_in_place(|| {
+                                    tokio::runtime::Handle::current().block_on(async {
+                                        client
+                                            .get(format!("http://{}/", probe_url))
+                                            .send()
+                                            .await
+                                            .ok()
+                                    })
+                                })
+                            })
+                            .and_then(|resp| {
+                                tokio::task::block_in_place(|| {
+                                    tokio::runtime::Handle::current()
+                                        .block_on(async { resp.text().await.ok() })
+                                })
+                            }) {
+                            Some(text) => {
+                                // Freenet is ready only if it's NOT showing the setup wizard
+                                !text.contains("Set Up Freenet")
+                                    && !text.contains("First Time Wizard")
                             }
-                            tokio::time::sleep(std::time::Duration::from_secs(15)).await;
+                            None => false,
                         }
+                    } else {
+                        // TCP probe for I2P, ZeroNet, Lokinet
+                        let probe_addr = match worker_network.as_str() {
+                            "i2p" => std::env::var("I2P_PROXY")
+                                .unwrap_or_else(|_| "i2p1:4444".to_string()),
+                            "zeronet" => std::env::var("ZERONET_PROXY")
+                                .unwrap_or_else(|_| "zeronet1:43110".to_string()),
+                            "lokinet" => std::env::var("LOKINET_PROXY")
+                                .unwrap_or_else(|_| "lokinet1:1080".to_string()),
+                            _ => unreachable!(),
+                        };
+                        tokio::net::TcpStream::connect(&probe_addr).await.is_ok()
+                    };
+
+                    if is_ready {
+                        info!(worker_id, network = %worker_network, "network proxy is reachable");
+                        break;
+                    } else {
+                        probe_attempts += 1;
+                        if probe_attempts >= max_probe_retries {
+                            warn!(worker_id, network = %worker_network, "proxy unreachable after {} attempts, worker will skip", probe_attempts);
+                            return; // exit worker — this network is down
+                        }
+                        tokio::time::sleep(std::time::Duration::from_secs(15)).await;
                     }
                 }
             }
@@ -512,6 +606,11 @@ pub async fn run_crawl(
                             }
                         };
 
+                        // Increment domain page counter
+                        domain_counts.entry(domain.clone())
+                            .or_insert_with(|| AtomicUsize::new(0))
+                            .fetch_add(1, Ordering::Relaxed);
+
                         // ============ DISCOVERY MODULES ============
 
                         let mut discovered_urls: Vec<String> = Vec::new();
@@ -587,10 +686,19 @@ pub async fn run_crawl(
                                     continue;
                                 }
                                 if let Some(mut job) = make_crawl_job(url_str, depth, &url, &drivers) {
-                                    // 10x priority boost for domains we haven't visited yet
                                     let link_domain = job.url.host_str().unwrap_or("");
-                                    if !link_domain.is_empty() && !probed_set.contains(link_domain) {
-                                        job.priority *= 10.0;
+                                    if !link_domain.is_empty() {
+                                        // MASSIVE priority boost for domains we haven't visited yet
+                                        if !probed_set.contains(link_domain) {
+                                            job.priority *= 1000.0;
+                                        }
+                                        // MASSIVE penalty for domains exceeding page limit
+                                        if let Some(count_entry) = domain_counts.get(link_domain) {
+                                            let page_count = count_entry.load(Ordering::Relaxed);
+                                            if page_count > MAX_PAGES_PER_DOMAIN {
+                                                job.priority *= 0.001; // 1000x penalty
+                                            }
+                                        }
                                     }
                                     batch.push(job);
                                 }
@@ -620,7 +728,10 @@ pub async fn run_crawl(
     drop(result_tx);
 
     // Wait for shutdown signal
-    info!("press Ctrl+C to stop crawling ({} workers active)", total_workers);
+    info!(
+        "press Ctrl+C to stop crawling ({} workers active)",
+        total_workers
+    );
     signal::ctrl_c().await?;
     info!("shutdown signal received");
     let _ = shutdown_tx.send(());

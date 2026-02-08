@@ -125,7 +125,11 @@ fn extract_links(document: &Html, base_url: &Url, base_domain: &str) -> Vec<Extr
                 url: resolved.to_string(),
                 anchor_text: {
                     let t = el.text().collect::<String>().trim().to_string();
-                    if t.is_empty() { None } else { Some(t) }
+                    if t.is_empty() {
+                        None
+                    } else {
+                        Some(t)
+                    }
                 },
                 is_onion: host.ends_with(".onion"),
                 is_i2p: host.ends_with(".i2p"),
@@ -139,7 +143,11 @@ fn extract_links(document: &Html, base_url: &Url, base_domain: &str) -> Vec<Extr
 }
 
 fn extract_meta_content(document: &Html, name: &str) -> Option<String> {
-    let sel_str = format!("meta[name='{}'], meta[name='{}']", name, name.to_uppercase());
+    let sel_str = format!(
+        "meta[name='{}'], meta[name='{}']",
+        name,
+        name.to_uppercase()
+    );
     selector(&sel_str)
         .and_then(|s| document.select(&s).next())
         .and_then(|el| el.value().attr("content").map(|s| s.to_string()))

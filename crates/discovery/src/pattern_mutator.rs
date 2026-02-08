@@ -21,7 +21,9 @@ impl PatternMutator {
         let mut seen_patterns: std::collections::HashSet<String> = std::collections::HashSet::new();
 
         for url_str in urls {
-            let Ok(url) = Url::parse(url_str) else { continue };
+            let Ok(url) = Url::parse(url_str) else {
+                continue;
+            };
             let path = url.path();
 
             // Try specific named patterns first
@@ -30,17 +32,27 @@ impl PatternMutator {
                     Ok(n) => n,
                     Err(_) => continue,
                 };
-                let pattern_key = format!("{}:{}", url.host_str().unwrap_or(""), &cap[0][..cap[0].len() - cap[1].len()]);
+                let pattern_key = format!(
+                    "{}:{}",
+                    url.host_str().unwrap_or(""),
+                    &cap[0][..cap[0].len() - cap[1].len()]
+                );
                 if seen_patterns.contains(&pattern_key) {
                     continue;
                 }
                 seen_patterns.insert(pattern_key);
 
                 // Enumerate neighbors
-                let start = if num > max_enumerate { num - max_enumerate } else { 1 };
+                let start = if num > max_enumerate {
+                    num - max_enumerate
+                } else {
+                    1
+                };
                 let end = num + max_enumerate;
                 for i in start..=end {
-                    if i == num { continue; }
+                    if i == num {
+                        continue;
+                    }
                     let new_path = path.replace(&format!("{}", num), &format!("{}", i));
                     let mut new_url = url.clone();
                     new_url.set_path(&new_path);
@@ -60,10 +72,16 @@ impl PatternMutator {
                 }
                 seen_patterns.insert(pattern_key);
 
-                let start = if num > max_enumerate { num - max_enumerate } else { 1 };
+                let start = if num > max_enumerate {
+                    num - max_enumerate
+                } else {
+                    1
+                };
                 let end = num + max_enumerate;
                 for i in start..=end {
-                    if i == num { continue; }
+                    if i == num {
+                        continue;
+                    }
                     let old = format!("/{}/{}", segment, num);
                     let new = format!("/{}/{}", segment, i);
                     let new_path = path.replacen(&old, &new, 1);

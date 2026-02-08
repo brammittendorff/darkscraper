@@ -78,7 +78,7 @@ impl Storage {
         if !all_levels.is_empty() {
             sqlx::query(
                 "INSERT INTO headings (page_id, level, text)
-                 SELECT $1, * FROM UNNEST($2::int[], $3::text[])"
+                 SELECT $1, * FROM UNNEST($2::int[], $3::text[])",
             )
             .bind(page_id)
             .bind(&all_levels)
@@ -115,7 +115,7 @@ impl Storage {
             if !all_types.is_empty() {
                 sqlx::query(
                     "INSERT INTO entities (page_id, entity_type, value, found_at)
-                     SELECT $1, * FROM UNNEST($2::varchar[], $3::text[], $4::timestamptz[])"
+                     SELECT $1, * FROM UNNEST($2::varchar[], $3::text[], $4::timestamptz[])",
                 )
                 .bind(page_id)
                 .bind(&all_types)
@@ -178,9 +178,7 @@ impl Storage {
     }
 
     pub async fn check_connectivity(&self) -> Result<()> {
-        sqlx::query("SELECT 1")
-            .execute(&self.pool)
-            .await?;
+        sqlx::query("SELECT 1").execute(&self.pool).await?;
         Ok(())
     }
 
@@ -239,12 +237,10 @@ impl Storage {
 
     /// Check if a URL is dead.
     pub async fn is_dead(&self, url: &str) -> Result<bool> {
-        let row: (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM dead_urls WHERE url = $1",
-        )
-        .bind(url)
-        .fetch_one(&self.pool)
-        .await?;
+        let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM dead_urls WHERE url = $1")
+            .bind(url)
+            .fetch_one(&self.pool)
+            .await?;
         Ok(row.0 > 0)
     }
 
@@ -276,11 +272,10 @@ impl Storage {
     /// Load all previously crawled URLs from pages + dead_urls tables.
     /// Used at startup to prime the bloom filter so we don't re-crawl.
     pub async fn load_all_known_urls(&self) -> Result<Vec<String>> {
-        let rows: Vec<(String,)> = sqlx::query_as(
-            "SELECT DISTINCT url FROM pages UNION SELECT url FROM dead_urls"
-        )
-        .fetch_all(&self.pool)
-        .await?;
+        let rows: Vec<(String,)> =
+            sqlx::query_as("SELECT DISTINCT url FROM pages UNION SELECT url FROM dead_urls")
+                .fetch_all(&self.pool)
+                .await?;
         Ok(rows.into_iter().map(|(url,)| url).collect())
     }
 

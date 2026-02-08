@@ -31,9 +31,8 @@ async fn main() -> Result<()> {
     let mut config: AppConfig = toml::from_str(&config_str)?;
 
     // Environment variable overrides for worker/concurrency tuning
-    let parse_workers = |v: &str| -> Option<usize> {
-        v.parse::<usize>().ok().filter(|&n| n > 0 && n <= 128)
-    };
+    let parse_workers =
+        |v: &str| -> Option<usize> { v.parse::<usize>().ok().filter(|&n| n > 0 && n <= 128) };
     if let Ok(v) = std::env::var("TOR_WORKERS") {
         if let Some(n) = parse_workers(&v) {
             config.tor.max_concurrency = n;

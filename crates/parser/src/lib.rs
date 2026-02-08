@@ -1,5 +1,5 @@
-pub mod html;
 pub mod entities;
+pub mod html;
 
 use darkscraper_core::{CrawlError, FetchResponse, PageData, PageMetadata};
 use sha2::{Digest, Sha256};
@@ -21,13 +21,23 @@ pub fn parse_response(resp: &FetchResponse) -> Result<PageData, CrawlError> {
     let raw_entities = entities::extract_entities(&body_str);
     // Merge entities from raw HTML
     entities.emails.extend(raw_entities.emails);
-    entities.onion_addresses.extend(raw_entities.onion_addresses);
+    entities
+        .onion_addresses
+        .extend(raw_entities.onion_addresses);
     entities.i2p_addresses.extend(raw_entities.i2p_addresses);
-    entities.bitcoin_addresses.extend(raw_entities.bitcoin_addresses);
-    entities.monero_addresses.extend(raw_entities.monero_addresses);
-    entities.ethereum_addresses.extend(raw_entities.ethereum_addresses);
+    entities
+        .bitcoin_addresses
+        .extend(raw_entities.bitcoin_addresses);
+    entities
+        .monero_addresses
+        .extend(raw_entities.monero_addresses);
+    entities
+        .ethereum_addresses
+        .extend(raw_entities.ethereum_addresses);
     entities.phone_numbers.extend(raw_entities.phone_numbers);
-    entities.pgp_fingerprints.extend(raw_entities.pgp_fingerprints);
+    entities
+        .pgp_fingerprints
+        .extend(raw_entities.pgp_fingerprints);
     entities.usernames.extend(raw_entities.usernames);
     // Dedup each type
     entities.emails.sort();
@@ -53,11 +63,7 @@ pub fn parse_response(resp: &FetchResponse) -> Result<PageData, CrawlError> {
     hasher.update(&resp.body);
     let raw_html_hash = format!("{:x}", hasher.finalize());
 
-    let domain = resp
-        .url
-        .host_str()
-        .unwrap_or("unknown")
-        .to_string();
+    let domain = resp.url.host_str().unwrap_or("unknown").to_string();
 
     // Extract metadata from response headers
     let metadata = PageMetadata {

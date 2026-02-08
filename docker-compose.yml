@@ -163,8 +163,8 @@ services:
 
   # --- ZeroNet instances (3 always-on, 2 extra via profile) ---
   zeronet1:
-    image: canewsin/zeronet:latest
-    command: ["python3", "zeronet.py", "--ui_ip", "0.0.0.0", "--ui_host", "zeronet1:43110", "--fileserver_port", "26117"]
+    build: ./docker/zeronet
+    hostname: zeronet1
     volumes:
       - zeronet1data:/app/data
     healthcheck:
@@ -172,11 +172,11 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
-      start_period: 30s
+      start_period: 60s
 
   zeronet2:
-    image: canewsin/zeronet:latest
-    command: ["python3", "zeronet.py", "--ui_ip", "0.0.0.0", "--ui_host", "zeronet2:43110", "--fileserver_port", "26117"]
+    build: ./docker/zeronet
+    hostname: zeronet2
     volumes:
       - zeronet2data:/app/data
     healthcheck:
@@ -184,11 +184,11 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
-      start_period: 30s
+      start_period: 60s
 
   zeronet3:
-    image: canewsin/zeronet:latest
-    command: ["python3", "zeronet.py", "--ui_ip", "0.0.0.0", "--ui_host", "zeronet3:43110", "--fileserver_port", "26117"]
+    build: ./docker/zeronet
+    hostname: zeronet3
     volumes:
       - zeronet3data:/app/data
     healthcheck:
@@ -196,12 +196,11 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
-      start_period: 30s
+      start_period: 60s
 
   zeronet4:
-    image: canewsin/zeronet:latest
+    build: ./docker/zeronet
     profiles: [zeronet-extra]
-    command: ["python3", "zeronet.py", "--ui_ip", "0.0.0.0", "--ui_host", "zeronet4:43110", "--fileserver_port", "26117"]
     volumes:
       - zeronet4data:/app/data
     healthcheck:
@@ -209,12 +208,11 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
-      start_period: 30s
+      start_period: 60s
 
   zeronet5:
-    image: canewsin/zeronet:latest
+    build: ./docker/zeronet
     profiles: [zeronet-extra]
-    command: ["python3", "zeronet.py", "--ui_ip", "0.0.0.0", "--ui_host", "zeronet5:43110", "--fileserver_port", "26117"]
     volumes:
       - zeronet5data:/app/data
     healthcheck:
@@ -222,7 +220,7 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
-      start_period: 30s
+      start_period: 60s
 
   # --- Freenet/Hyphanet instances (3 always-on, 2 extra via profile) ---
   # FProxy gateway on port 8888, needs allowedhosts for Docker network access

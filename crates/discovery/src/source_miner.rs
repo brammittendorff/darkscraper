@@ -9,8 +9,7 @@ pub struct SourceMiner;
 
 // -- Regex patterns for source mining --
 
-static HTML_COMMENT_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"<!--([\s\S]*?)-->").unwrap());
+static HTML_COMMENT_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<!--([\s\S]*?)-->").unwrap());
 
 static JS_URL_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"["'](https?://[^"'\s]{5,})["']"#).unwrap());

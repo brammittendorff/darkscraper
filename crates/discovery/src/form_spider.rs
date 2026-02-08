@@ -84,8 +84,7 @@ impl FormSpider {
             for query in SEARCH_QUERIES {
                 if form.method == "get" {
                     if let Ok(mut url) = Url::parse(&form.action_url) {
-                        url.query_pairs_mut()
-                            .append_pair(&form.search_param, query);
+                        url.query_pairs_mut().append_pair(&form.search_param, query);
                         urls.push(url.to_string());
                     }
                 }

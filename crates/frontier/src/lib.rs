@@ -32,9 +32,7 @@ impl PartialOrd for Priority {
 
 impl Ord for Priority {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.0
-            .partial_cmp(&other.0)
-            .unwrap_or(Ordering::Equal)
+        self.0.partial_cmp(&other.0).unwrap_or(Ordering::Equal)
     }
 }
 
@@ -189,7 +187,10 @@ impl CrawlFrontier {
         let mut by_network: HashMap<String, Vec<(String, CrawlJob)>> = HashMap::new();
         for job in to_enqueue {
             let normalized = Self::normalize_url(&job.url);
-            by_network.entry(job.network.clone()).or_default().push((normalized, job));
+            by_network
+                .entry(job.network.clone())
+                .or_default()
+                .push((normalized, job));
         }
         let mut added = 0;
         for (network, jobs) in by_network {
@@ -269,8 +270,7 @@ impl CrawlFrontier {
 
     /// Record that we visited a host now (for politeness delays)
     pub fn record_host_visit(&self, host: &str) {
-        self.host_last_seen
-            .insert(host.to_string(), Instant::now());
+        self.host_last_seen.insert(host.to_string(), Instant::now());
     }
 
     /// Check if enough time has elapsed since the last visit to this host
@@ -316,7 +316,12 @@ impl CrawlFrontier {
                 added += 1;
             }
         }
-        debug!(added, total = urls.len(), network, "added seeds to frontier");
+        debug!(
+            added,
+            total = urls.len(),
+            network,
+            "added seeds to frontier"
+        );
         added
     }
 

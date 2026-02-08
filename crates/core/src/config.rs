@@ -96,6 +96,12 @@ pub struct FrontierConfig {
     pub max_retries: u32,
 }
 
-fn default_bloom_size() -> usize { 10_000_000 }
-fn default_bloom_fp() -> f64 { 0.001 }
-fn default_max_retries() -> u32 { 3 }
+fn default_bloom_size() -> usize {
+    10_000_000
+}
+fn default_bloom_fp() -> f64 {
+    0.001
+}
+fn default_max_retries() -> u32 {
+    3
+}

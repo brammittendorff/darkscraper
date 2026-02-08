@@ -5,6 +5,7 @@
   "graphTooltip": 1,
   "id": null,
   "links": [
+    { "title": "Search Dashboard", "url": "/d/darkscraper-search", "type": "link", "icon": "search" },
     { "title": "Tor Dashboard", "url": "/d/darkscraper-tor", "type": "link" },
     { "title": "I2P Dashboard", "url": "/d/darkscraper-i2p", "type": "link" },
     { "title": "ZeroNet Dashboard", "url": "/d/darkscraper-zeronet", "type": "link" },
@@ -172,10 +173,66 @@
       "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "dark-red", "value": null }, { "color": "red", "value": 10 }] } }, "overrides": [] }
     },
     {
+      "id": 27,
+      "title": "Domain Diversity per Network",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [
+        { "rawSql": "SELECT COUNT(DISTINCT domain) AS \"Tor Domains\" FROM pages WHERE network = 'tor';", "format": "table", "refId": "A" },
+        { "rawSql": "SELECT COUNT(DISTINCT domain) AS \"I2P Domains\" FROM pages WHERE network = 'i2p';", "format": "table", "refId": "B" },
+        { "rawSql": "SELECT COUNT(DISTINCT domain) AS \"ZeroNet Domains\" FROM pages WHERE network = 'zeronet';", "format": "table", "refId": "C" },
+        { "rawSql": "SELECT COUNT(DISTINCT domain) AS \"Freenet Sites\" FROM pages WHERE network = 'freenet';", "format": "table", "refId": "D" },
+        { "rawSql": "SELECT COUNT(DISTINCT domain) AS \"Lokinet Domains\" FROM pages WHERE network = 'lokinet';", "format": "table", "refId": "E" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "blue", "value": null },
+              { "color": "green", "value": 5 },
+              { "color": "yellow", "value": 20 },
+              { "color": "orange", "value": 50 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "background"
+      }
+    },
+    {
+      "id": 28,
+      "title": "Pages per Domain Distribution",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{
+        "rawSql": "WITH domain_stats AS (SELECT domain, COUNT(*) AS page_count FROM pages GROUP BY domain) SELECT CASE WHEN page_count = 1 THEN '1 page' WHEN page_count BETWEEN 2 AND 5 THEN '2-5 pages' WHEN page_count BETWEEN 6 AND 10 THEN '6-10 pages' WHEN page_count BETWEEN 11 AND 20 THEN '11-20 pages' WHEN page_count BETWEEN 21 AND 50 THEN '21-50 pages' ELSE '50+ pages' END AS distribution, COUNT(*) AS domain_count FROM domain_stats GROUP BY distribution ORDER BY MIN(page_count);",
+        "format": "table",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisLabel": "Domains", "axisPlacement": "auto" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0,
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
       "id": 5,
       "title": "Pages Crawled Over Time (All Networks)",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [
         { "rawSql": "SELECT date_trunc('minute', fetched_at) AS time, COUNT(*) AS tor FROM pages WHERE network = 'tor' GROUP BY 1 ORDER BY 1;", "format": "time_series", "refId": "A" },
@@ -201,7 +258,7 @@
       "id": 6,
       "title": "Pages by Network",
       "type": "piechart",
-      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 12 },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 20 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [{
         "rawSql": "SELECT network, COUNT(*) AS count FROM pages GROUP BY network ORDER BY count DESC;",
@@ -214,7 +271,7 @@
       "id": 7,
       "title": "Entity Types Breakdown",
       "type": "piechart",
-      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 12 },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 20 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [{
         "rawSql": "SELECT entity_type, COUNT(*) AS count FROM entities GROUP BY entity_type ORDER BY count DESC;",
@@ -227,7 +284,7 @@
       "id": 25,
       "title": "Avg Response Time by Network (ms)",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [
         { "rawSql": "SELECT date_trunc('minute', fetched_at) AS time, AVG(response_time_ms)::int AS tor FROM pages WHERE network = 'tor' AND response_time_ms > 0 GROUP BY 1 ORDER BY 1;", "format": "time_series", "refId": "A" },
@@ -249,7 +306,7 @@
       "id": 26,
       "title": "Domains by Network",
       "type": "barchart",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [{
         "rawSql": "SELECT network, COUNT(DISTINCT domain) AS domains FROM pages GROUP BY network ORDER BY domains DESC;",
@@ -262,7 +319,7 @@
       "id": 8,
       "title": "Top 20 Domains by Pages",
       "type": "barchart",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [{
         "rawSql": "SELECT domain, network, COUNT(*) AS pages FROM pages GROUP BY domain, network ORDER BY pages DESC LIMIT 20;",
@@ -275,7 +332,7 @@
       "id": 9,
       "title": "Correlation Types",
       "type": "barchart",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [{
         "rawSql": "SELECT correlation_type, COUNT(*) AS count FROM correlations GROUP BY correlation_type ORDER BY count DESC;",
@@ -288,7 +345,7 @@
       "id": 10,
       "title": "Recent Entities Found",
       "type": "table",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 44 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [{
         "rawSql": "SELECT p.network, e.entity_type, e.value, p.domain, e.found_at FROM entities e JOIN pages p ON e.page_id = p.id ORDER BY e.found_at DESC LIMIT 50;",
@@ -301,7 +358,7 @@
       "id": 11,
       "title": "Recent Pages Crawled",
       "type": "table",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 44 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [{
         "rawSql": "SELECT network, domain, title, status_code, response_time_ms, fetched_at FROM pages ORDER BY fetched_at DESC LIMIT 50;",
@@ -314,7 +371,7 @@
       "id": 12,
       "title": "Cross-Site Correlations (Same Fingerprint on Multiple Domains)",
       "type": "table",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 44 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 52 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [{
         "rawSql": "SELECT c.correlation_type, c.value, array_agg(DISTINCT c.domain) AS domains, COUNT(DISTINCT c.domain) AS domain_count FROM correlations c GROUP BY c.correlation_type, c.value HAVING COUNT(DISTINCT c.domain) > 1 ORDER BY domain_count DESC LIMIT 30;",
@@ -327,7 +384,7 @@
       "id": 14,
       "title": "Pages with Stored HTML Body",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 52 },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 60 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [{
         "rawSql": "SELECT COUNT(*) AS \"Pages with HTML\" FROM pages WHERE raw_html IS NOT NULL AND raw_html != '';",
@@ -340,7 +397,7 @@
       "id": 15,
       "title": "Avg HTML Size (KB)",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 52 },
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 60 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [{
         "rawSql": "SELECT ROUND(AVG(LENGTH(raw_html)) / 1024.0, 1) AS \"Avg KB\" FROM pages WHERE raw_html IS NOT NULL AND raw_html != '';",
@@ -353,7 +410,7 @@
       "id": 16,
       "title": "HTTP Status Distribution",
       "type": "piechart",
-      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 52 },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 60 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [{
         "rawSql": "SELECT status_code::text AS status, COUNT(*) AS count FROM pages GROUP BY status_code ORDER BY count DESC;",
@@ -366,7 +423,7 @@
       "id": 13,
       "title": "All Networks Link Graph (Source -> Target domains)",
       "type": "table",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 56 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 64 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [{
         "rawSql": "SELECT p.network, p.domain AS source_domain, substring(l.target_url from '://([^/]+)') AS target_domain, COUNT(*) AS link_count FROM links l JOIN pages p ON l.source_page_id = p.id GROUP BY p.network, source_domain, target_domain ORDER BY link_count DESC LIMIT 50;",
@@ -379,7 +436,7 @@
       "id": 17,
       "title": "Dead URLs (Permanently Failed)",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 64 },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 72 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [{
         "rawSql": "SELECT COUNT(*) AS \"Dead URLs\" FROM dead_urls;",
@@ -392,7 +449,7 @@
       "id": 18,
       "title": "Dead URLs by Network",
       "type": "piechart",
-      "gridPos": { "h": 4, "w": 16, "x": 8, "y": 64 },
+      "gridPos": { "h": 4, "w": 16, "x": 8, "y": 72 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [{
         "rawSql": "SELECT network, COUNT(*) AS count FROM dead_urls GROUP BY network ORDER BY count DESC;",
@@ -405,7 +462,7 @@
       "id": 19,
       "title": "Recent Dead URLs",
       "type": "table",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 68 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 76 },
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
       "targets": [{
         "rawSql": "SELECT url, network, domain, retry_count, last_error, died_at FROM dead_urls ORDER BY died_at DESC LIMIT 50;",

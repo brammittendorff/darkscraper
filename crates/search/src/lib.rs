@@ -35,7 +35,18 @@ impl SearchEngine {
     /// Search pages by body text, raw HTML, and title (ILIKE with trigram index)
     pub async fn search_text(&self, query: &str, limit: i64) -> Result<Vec<SearchResult>> {
         let pattern = format!("%{}%", query);
-        let rows = sqlx::query_as::<_, (i64, String, Option<String>, String, String, Option<String>, chrono::DateTime<chrono::Utc>)>(
+        let rows = sqlx::query_as::<
+            _,
+            (
+                i64,
+                String,
+                Option<String>,
+                String,
+                String,
+                Option<String>,
+                chrono::DateTime<chrono::Utc>,
+            ),
+        >(
             r#"SELECT id, url, title, network, domain, LEFT(body_text, 200), fetched_at
                FROM pages
                WHERE body_text ILIKE $1 OR title ILIKE $1 OR raw_html ILIKE $1

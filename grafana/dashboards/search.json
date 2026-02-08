@@ -1,0 +1,498 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    { "title": "Main Dashboard", "url": "/d/darkscraper-main", "type": "link" },
+    { "title": "Tor Dashboard", "url": "/d/darkscraper-tor", "type": "link" },
+    { "title": "I2P Dashboard", "url": "/d/darkscraper-i2p", "type": "link" }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Top Entities by Type",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{
+        "rawSql": "SELECT entity_type, COUNT(*) AS count FROM entities GROUP BY entity_type ORDER BY count DESC;",
+        "format": "table",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisLabel": "Count", "axisPlacement": "auto" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 100,
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Recent Entities",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{
+        "rawSql": "SELECT p.url AS page_url, e.value, e.entity_type, e.found_at FROM entities e JOIN pages p ON e.page_id = p.id ORDER BY e.found_at DESC LIMIT 100;",
+        "format": "table",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "filterable": true },
+          "links": []
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "page_url" },
+            "properties": [
+              { "id": "custom.width", "value": 400 },
+              { "id": "links", "value": [{ "title": "Open URL", "url": "${__value.raw}" }] }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "found_at" },
+            "properties": [{ "id": "custom.width", "value": 180 }]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "footer": { "show": false }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Entity Search",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{
+        "rawSql": "SELECT e.entity_type, e.value, p.url AS page_url, p.network, p.domain, e.found_at FROM entities e JOIN pages p ON e.page_id = p.id WHERE e.value ILIKE '%${entity_search}%' OR '${entity_search}' = '' ORDER BY e.found_at DESC LIMIT 200;",
+        "format": "table",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "filterable": true }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "page_url" },
+            "properties": [
+              { "id": "custom.width", "value": 350 },
+              { "id": "links", "value": [{ "title": "Open URL", "url": "${__value.raw}" }] }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "value" },
+            "properties": [{ "id": "custom.width", "value": 250 }]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "footer": { "show": false }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Page Search (Title + Body Text)",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{
+        "rawSql": "SELECT url, title, network, domain, status_code, fetched_at FROM pages WHERE CASE WHEN LENGTH('${page_search}') > 0 THEN (title ILIKE '%${page_search}%' OR body_text ILIKE '%${page_search}%') ELSE true END ORDER BY fetched_at DESC LIMIT 200;",
+        "format": "table",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "filterable": true }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "url" },
+            "properties": [
+              { "id": "custom.width", "value": 350 },
+              { "id": "links", "value": [{ "title": "Open URL", "url": "${__value.raw}" }] }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "title" },
+            "properties": [{ "id": "custom.width", "value": 250 }]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "footer": { "show": false }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Top Domains (Top 20)",
+      "type": "barchart",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 18 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{
+        "rawSql": "SELECT domain, network, COUNT(*) AS page_count FROM pages GROUP BY domain, network ORDER BY page_count DESC LIMIT 20;",
+        "format": "table",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisLabel": "Pages", "axisPlacement": "auto" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 100,
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Network Distribution",
+      "type": "piechart",
+      "gridPos": { "h": 10, "w": 6, "x": 12, "y": 18 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{
+        "rawSql": "SELECT network, COUNT(*) AS count FROM pages GROUP BY network ORDER BY count DESC;",
+        "format": "table",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "hideFrom": { "tooltip": false, "viz": false, "legend": false } }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] },
+        "pieType": "pie",
+        "tooltip": { "mode": "single" },
+        "displayLabels": ["name", "percent"]
+      }
+    },
+    {
+      "id": 7,
+      "title": "Crawl Rate Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 6, "x": 18, "y": 18 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{
+        "rawSql": "SELECT date_trunc('hour', fetched_at) AS time, COUNT(*) AS pages_crawled FROM pages WHERE fetched_at >= NOW() - INTERVAL '24 hours' GROUP BY 1 ORDER BY 1;",
+        "format": "time_series",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "fillOpacity": 30,
+            "lineWidth": 2,
+            "drawStyle": "bars",
+            "stacking": { "mode": "none" },
+            "axisPlacement": "auto",
+            "axisLabel": "Pages/Hour"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Entity Types Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 28 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [
+        {
+          "rawSql": "SELECT date_trunc('hour', found_at) AS time, COUNT(*) AS email FROM entities WHERE entity_type = 'email' AND found_at >= NOW() - INTERVAL '24 hours' GROUP BY 1 ORDER BY 1;",
+          "format": "time_series",
+          "refId": "A"
+        },
+        {
+          "rawSql": "SELECT date_trunc('hour', found_at) AS time, COUNT(*) AS btc FROM entities WHERE entity_type = 'btc' AND found_at >= NOW() - INTERVAL '24 hours' GROUP BY 1 ORDER BY 1;",
+          "format": "time_series",
+          "refId": "B"
+        },
+        {
+          "rawSql": "SELECT date_trunc('hour', found_at) AS time, COUNT(*) AS eth FROM entities WHERE entity_type = 'eth' AND found_at >= NOW() - INTERVAL '24 hours' GROUP BY 1 ORDER BY 1;",
+          "format": "time_series",
+          "refId": "C"
+        },
+        {
+          "rawSql": "SELECT date_trunc('hour', found_at) AS time, COUNT(*) AS xmr FROM entities WHERE entity_type = 'xmr' AND found_at >= NOW() - INTERVAL '24 hours' GROUP BY 1 ORDER BY 1;",
+          "format": "time_series",
+          "refId": "D"
+        },
+        {
+          "rawSql": "SELECT date_trunc('hour', found_at) AS time, COUNT(*) AS phone FROM entities WHERE entity_type = 'phone' AND found_at >= NOW() - INTERVAL '24 hours' GROUP BY 1 ORDER BY 1;",
+          "format": "time_series",
+          "refId": "E"
+        },
+        {
+          "rawSql": "SELECT date_trunc('hour', found_at) AS time, COUNT(*) AS ipv4 FROM entities WHERE entity_type = 'ipv4' AND found_at >= NOW() - INTERVAL '24 hours' GROUP BY 1 ORDER BY 1;",
+          "format": "time_series",
+          "refId": "F"
+        },
+        {
+          "rawSql": "SELECT date_trunc('hour', found_at) AS time, COUNT(*) AS url FROM entities WHERE entity_type = 'url' AND found_at >= NOW() - INTERVAL '24 hours' GROUP BY 1 ORDER BY 1;",
+          "format": "time_series",
+          "refId": "G"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "stacking": { "mode": "normal" },
+            "axisPlacement": "auto",
+            "axisLabel": "Entities Found"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Search by Network",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 38 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{
+        "rawSql": "SELECT url, title, domain, status_code, response_time_ms, fetched_at FROM pages WHERE network = '${network}' ORDER BY fetched_at DESC LIMIT 100;",
+        "format": "table",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "filterable": true }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "url" },
+            "properties": [
+              { "id": "custom.width", "value": 350 },
+              { "id": "links", "value": [{ "title": "Open URL", "url": "${__value.raw}" }] }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "footer": { "show": false }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Pages with Login Forms",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 38 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{
+        "rawSql": "SELECT url, title, network, domain, fetched_at FROM pages WHERE has_login_form = true ORDER BY fetched_at DESC LIMIT 100;",
+        "format": "table",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "filterable": true }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "url" },
+            "properties": [
+              { "id": "custom.width", "value": 350 },
+              { "id": "links", "value": [{ "title": "Open URL", "url": "${__value.raw}" }] }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "footer": { "show": false }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Correlation Search",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 48 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{
+        "rawSql": "SELECT domain, correlation_type, value FROM correlations WHERE value ILIKE '%${correlation_search}%' OR '${correlation_search}' = '' ORDER BY domain, correlation_type LIMIT 200;",
+        "format": "table",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "filterable": true }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "value" },
+            "properties": [{ "id": "custom.width", "value": 400 }]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "footer": { "show": false }
+      }
+    },
+    {
+      "id": 12,
+      "title": "Links from Domain",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 58 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{
+        "rawSql": "SELECT p.domain AS source_domain, l.target_url, l.anchor_text, l.is_onion, l.is_i2p, l.is_zeronet, l.is_freenet, l.is_lokinet FROM links l JOIN pages p ON l.source_page_id = p.id WHERE p.domain ILIKE '%${domain_search}%' AND '${domain_search}' != '' ORDER BY p.domain, l.target_url LIMIT 200;",
+        "format": "table",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "filterable": true }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "target_url" },
+            "properties": [
+              { "id": "custom.width", "value": 400 },
+              { "id": "links", "value": [{ "title": "Open URL", "url": "${__value.raw}" }] }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "anchor_text" },
+            "properties": [{ "id": "custom.width", "value": 200 }]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "footer": { "show": false }
+      }
+    },
+    {
+      "id": 13,
+      "title": "Entity Type Statistics",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 68 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [
+        { "rawSql": "SELECT COUNT(*) AS \"Emails\" FROM entities WHERE entity_type = 'email';", "format": "table", "refId": "A" },
+        { "rawSql": "SELECT COUNT(*) AS \"Bitcoin\" FROM entities WHERE entity_type = 'btc';", "format": "table", "refId": "B" },
+        { "rawSql": "SELECT COUNT(*) AS \"Ethereum\" FROM entities WHERE entity_type = 'eth';", "format": "table", "refId": "C" },
+        { "rawSql": "SELECT COUNT(*) AS \"Monero\" FROM entities WHERE entity_type = 'xmr';", "format": "table", "refId": "D" },
+        { "rawSql": "SELECT COUNT(*) AS \"Phone\" FROM entities WHERE entity_type = 'phone';", "format": "table", "refId": "E" },
+        { "rawSql": "SELECT COUNT(*) AS \"IPv4\" FROM entities WHERE entity_type = 'ipv4';", "format": "table", "refId": "F" },
+        { "rawSql": "SELECT COUNT(*) AS \"URLs\" FROM entities WHERE entity_type = 'url';", "format": "table", "refId": "G" },
+        { "rawSql": "SELECT COUNT(*) AS \"PGP Keys\" FROM entities WHERE entity_type = 'pgp_key';", "format": "table", "refId": "H" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "blue", "value": null },
+              { "color": "green", "value": 10 },
+              { "color": "yellow", "value": 100 },
+              { "color": "orange", "value": 1000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "background"
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["darkscraper", "search", "entities", "darkweb"],
+  "templating": {
+    "list": [
+      {
+        "name": "entity_search",
+        "type": "textbox",
+        "label": "Entity Value Search",
+        "description": "Search entities by value (case-insensitive)",
+        "query": "",
+        "current": { "value": "", "text": "" }
+      },
+      {
+        "name": "page_search",
+        "type": "textbox",
+        "label": "Page Content Search",
+        "description": "Search page titles and body text (case-insensitive)",
+        "query": "",
+        "current": { "value": "", "text": "" }
+      },
+      {
+        "name": "network",
+        "type": "query",
+        "label": "Network",
+        "description": "Filter by network",
+        "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+        "query": "SELECT DISTINCT network FROM pages ORDER BY network;",
+        "refresh": 1,
+        "regex": "",
+        "multi": false,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "value": "tor", "text": "tor" }
+      },
+      {
+        "name": "correlation_search",
+        "type": "textbox",
+        "label": "Correlation Value Search",
+        "description": "Search correlations by value (case-insensitive)",
+        "query": "",
+        "current": { "value": "", "text": "" }
+      },
+      {
+        "name": "domain_search",
+        "type": "textbox",
+        "label": "Domain Search",
+        "description": "Search links by source domain (case-insensitive)",
+        "query": "",
+        "current": { "value": "", "text": "" }
+      }
+    ]
+  },
+  "time": { "from": "now-24h", "to": "now" },
+  "title": "DarkScraper Search & Analysis",
+  "uid": "darkscraper-search"
+}
