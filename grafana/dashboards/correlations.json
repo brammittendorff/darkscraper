@@ -1,0 +1,27 @@
+{
+  "uid": "darkscraper-correlations",
+  "title": "Infrastructure & Correlations",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "links": [
+    {"title": "Overview", "url": "/d/darkscraper-overview", "type": "link"},
+    {"title": "Network Analysis", "url": "/d/darkscraper-network-analysis", "type": "link"}
+  ],
+  "panels": [
+    {"id": 1, "title": "Total Correlations Found", "type": "stat", "gridPos": {"h": 4, "w": 8, "x": 0, "y": 0}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COUNT(*) FROM correlations;", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "purple", "value": null}]}, "unit": "short"}, "overrides": []}},
+
+    {"id": 2, "title": "Unique Infrastructure Patterns", "type": "stat", "gridPos": {"h": 4, "w": 8, "x": 8, "y": 0}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COUNT(DISTINCT value) FROM correlations;", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "blue", "value": null}]}, "unit": "short"}, "overrides": []}},
+
+    {"id": 3, "title": "Shared Infrastructure Clusters", "type": "stat", "gridPos": {"h": 4, "w": 8, "x": 16, "y": 0}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COUNT(*) FROM (SELECT value FROM correlations GROUP BY value HAVING COUNT(DISTINCT domain) > 1) as shared;", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "yellow", "value": null}]}, "unit": "short"}, "overrides": []}},
+
+    {"id": 4, "title": "Correlation Types", "type": "barchart", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT correlation_type, COUNT(*) AS correlations FROM correlations GROUP BY correlation_type ORDER BY correlations DESC;", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {}, "overrides": []}, "options": {"orientation": "horizontal"}},
+
+    {"id": 5, "title": "Shared Infrastructure (Same Favicon)", "type": "table", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT value as favicon_hash, COUNT(DISTINCT domain) as domains, string_agg(DISTINCT domain, ', ') as domain_list FROM correlations WHERE correlation_type = 'favicon_hash' GROUP BY value HAVING COUNT(DISTINCT domain) > 1 ORDER BY domains DESC LIMIT 50;", "format": "table", "refId": "A"}], "options": {"showHeader": true}},
+
+    {"id": 6, "title": "Shared Server Headers", "type": "table", "gridPos": {"h": 10, "w": 12, "x": 0, "y": 12}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT value as server, COUNT(DISTINCT domain) as domains, string_agg(DISTINCT domain, ', ' ORDER BY domain) as domains_list FROM correlations WHERE correlation_type = 'server_header' GROUP BY value ORDER BY domains DESC LIMIT 50;", "format": "table", "refId": "A"}], "options": {"showHeader": true}},
+
+    {"id": 7, "title": "Google Analytics Tracking (Shared IDs)", "type": "table", "gridPos": {"h": 10, "w": 12, "x": 12, "y": 12}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT value as tracking_id, COUNT(DISTINCT domain) as domains, string_agg(DISTINCT domain, ', ') as domain_list FROM correlations WHERE correlation_type IN ('google_analytics_ua', 'google_analytics_g', 'google_tag_manager') GROUP BY value HAVING COUNT(DISTINCT domain) > 1 ORDER BY domains DESC LIMIT 50;", "format": "table", "refId": "A"}], "options": {"showHeader": true}}
+  ]
+}
