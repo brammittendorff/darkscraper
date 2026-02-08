@@ -1,0 +1,19 @@
+apiVersion: 1
+
+datasources:
+  - name: DarkScraper PostgreSQL
+    type: grafana-postgresql-datasource
+    uid: darkscraper-pg
+    url: postgres:5432
+    database: darkscraper
+    user: crawler
+    secureJsonData:
+      password: crawler
+    jsonData:
+      sslmode: disable
+      maxOpenConns: 5
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+      postgresVersion: 1600
+    isDefault: true
+    editable: true

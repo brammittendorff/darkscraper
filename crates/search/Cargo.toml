@@ -1,0 +1,13 @@
+[package]
+name = "darkscraper-search"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+darkscraper-core = { path = "../core" }
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls-ring-webpki", "postgres", "chrono"] }
+tokio = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+chrono = { workspace = true }

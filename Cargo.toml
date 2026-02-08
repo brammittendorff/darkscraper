@@ -1,0 +1,52 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/core",
+    "crates/networks",
+    "crates/parser",
+    "crates/storage",
+    "crates/frontier",
+    "crates/search",
+    "crates/discovery",
+]
+
+[package]
+name = "darkscraper"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "darkscraper"
+path = "src/main.rs"
+
+[dependencies]
+darkscraper-core = { path = "crates/core" }
+darkscraper-networks = { path = "crates/networks" }
+darkscraper-parser = { path = "crates/parser" }
+darkscraper-storage = { path = "crates/storage" }
+darkscraper-frontier = { path = "crates/frontier" }
+darkscraper-search = { path = "crates/search" }
+darkscraper-discovery = { path = "crates/discovery" }
+
+tokio = { version = "1", features = ["full"] }
+clap = { version = "4", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+anyhow = "1"
+url = "2"
+chrono = { version = "0.4", features = ["serde"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+dashmap = "6"
+
+[workspace.dependencies]
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+thiserror = "2"
+tracing = "0.1"
+url = "2"
+chrono = { version = "0.4", features = ["serde"] }

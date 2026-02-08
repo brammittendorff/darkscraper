@@ -1,0 +1,13 @@
+[package]
+name = "darkscraper-frontier"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+darkscraper-core = { path = "../core" }
+growable-bloom-filter = "2"
+dashmap = "6"
+priority-queue = "2"
+tokio = { workspace = true }
+tracing = { workspace = true }
+url = { workspace = true }

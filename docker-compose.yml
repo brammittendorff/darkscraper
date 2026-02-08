@@ -1,0 +1,467 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: darkscraper
+      POSTGRES_USER: crawler
+      POSTGRES_PASSWORD: crawler
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crawler -d darkscraper"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # --- Tor instances (3 always-on, 2 extra via profile) ---
+  tor1:
+    image: osminogin/tor-simple:latest
+    volumes:
+      - tor1data:/var/lib/tor
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 9050 2>/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  tor2:
+    image: osminogin/tor-simple:latest
+    volumes:
+      - tor2data:/var/lib/tor
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 9050 2>/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  tor3:
+    image: osminogin/tor-simple:latest
+    volumes:
+      - tor3data:/var/lib/tor
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 9050 2>/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  tor4:
+    image: osminogin/tor-simple:latest
+    profiles: [tor-extra]
+    volumes:
+      - tor4data:/var/lib/tor
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 9050 2>/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  tor5:
+    image: osminogin/tor-simple:latest
+    profiles: [tor-extra]
+    volumes:
+      - tor5data:/var/lib/tor
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 9050 2>/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # --- I2P instances (3 always-on, 2 extra via profile) ---
+  i2p1:
+    image: divax/i2p:current
+    environment:
+      ENABLE_HTTPPROXY: 1
+      ENABLE_SOCKSPROXY: 1
+      ENABLE_SAM: 1
+      BANDWIDTH: "O"
+    volumes:
+      - i2p1data:/home/i2pd/data
+      - ./config/i2pd.conf:/home/i2pd/conf/i2pd.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 4444 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 300s
+
+  i2p2:
+    image: divax/i2p:current
+    environment:
+      ENABLE_HTTPPROXY: 1
+      ENABLE_SOCKSPROXY: 1
+      ENABLE_SAM: 1
+      BANDWIDTH: "O"
+    volumes:
+      - i2p2data:/home/i2pd/data
+      - ./config/i2pd.conf:/home/i2pd/conf/i2pd.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 4444 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 300s
+
+  i2p3:
+    image: divax/i2p:current
+    environment:
+      ENABLE_HTTPPROXY: 1
+      ENABLE_SOCKSPROXY: 1
+      ENABLE_SAM: 1
+      BANDWIDTH: "O"
+    volumes:
+      - i2p3data:/home/i2pd/data
+      - ./config/i2pd.conf:/home/i2pd/conf/i2pd.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 4444 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 300s
+
+  i2p4:
+    image: divax/i2p:current
+    profiles: [i2p-extra]
+    environment:
+      ENABLE_HTTPPROXY: 1
+      ENABLE_SOCKSPROXY: 1
+      ENABLE_SAM: 1
+      BANDWIDTH: "O"
+    volumes:
+      - i2p4data:/home/i2pd/data
+      - ./config/i2pd.conf:/home/i2pd/conf/i2pd.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 4444 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 300s
+
+  i2p5:
+    image: divax/i2p:current
+    profiles: [i2p-extra]
+    environment:
+      ENABLE_HTTPPROXY: 1
+      ENABLE_SOCKSPROXY: 1
+      ENABLE_SAM: 1
+      BANDWIDTH: "O"
+    volumes:
+      - i2p5data:/home/i2pd/data
+      - ./config/i2pd.conf:/home/i2pd/conf/i2pd.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 4444 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 300s
+
+  # --- ZeroNet instances (3 always-on, 2 extra via profile) ---
+  zeronet1:
+    image: canewsin/zeronet:latest
+    command: ["python3", "zeronet.py", "--ui_ip", "0.0.0.0", "--ui_host", "zeronet1:43110", "--fileserver_port", "26117"]
+    volumes:
+      - zeronet1data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 43110 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  zeronet2:
+    image: canewsin/zeronet:latest
+    command: ["python3", "zeronet.py", "--ui_ip", "0.0.0.0", "--ui_host", "zeronet2:43110", "--fileserver_port", "26117"]
+    volumes:
+      - zeronet2data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 43110 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  zeronet3:
+    image: canewsin/zeronet:latest
+    command: ["python3", "zeronet.py", "--ui_ip", "0.0.0.0", "--ui_host", "zeronet3:43110", "--fileserver_port", "26117"]
+    volumes:
+      - zeronet3data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 43110 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  zeronet4:
+    image: canewsin/zeronet:latest
+    profiles: [zeronet-extra]
+    command: ["python3", "zeronet.py", "--ui_ip", "0.0.0.0", "--ui_host", "zeronet4:43110", "--fileserver_port", "26117"]
+    volumes:
+      - zeronet4data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 43110 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  zeronet5:
+    image: canewsin/zeronet:latest
+    profiles: [zeronet-extra]
+    command: ["python3", "zeronet.py", "--ui_ip", "0.0.0.0", "--ui_host", "zeronet5:43110", "--fileserver_port", "26117"]
+    volumes:
+      - zeronet5data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 43110 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # --- Freenet/Hyphanet instances (3 always-on, 2 extra via profile) ---
+  # FProxy gateway on port 8888, needs allowedhosts for Docker network access
+  freenet1:
+    build: ./docker/freenet
+    environment:
+      allowedhosts: "0.0.0.0/0"
+    volumes:
+      - freenet1data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8888/ 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 180s
+
+  freenet2:
+    build: ./docker/freenet
+    environment:
+      allowedhosts: "0.0.0.0/0"
+    volumes:
+      - freenet2data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8888/ 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 180s
+
+  freenet3:
+    build: ./docker/freenet
+    environment:
+      allowedhosts: "0.0.0.0/0"
+    volumes:
+      - freenet3data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8888/ 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 180s
+
+  freenet4:
+    build: ./docker/freenet
+    profiles: [freenet-extra]
+    environment:
+      allowedhosts: "0.0.0.0/0"
+    volumes:
+      - freenet4data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8888/ 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 180s
+
+  freenet5:
+    build: ./docker/freenet
+    profiles: [freenet-extra]
+    environment:
+      allowedhosts: "0.0.0.0/0"
+    volumes:
+      - freenet5data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8888/ 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 180s
+
+  # --- Lokinet instances (3 always-on, 2 extra via profile) ---
+  # SOCKS5 proxy on port 1080 via lokinet-socks image
+  # Privileged mode required for TUN interface creation and networking
+  lokinet1:
+    build: ./docker/lokinet-socks
+    privileged: true
+    volumes:
+      - lokinet1data:/var/lib/lokinet
+    healthcheck:
+      test: ["CMD-SHELL", "dig +short +timeout=3 @127.3.2.1 exit.loki A 2>/dev/null | grep -q '[0-9]' && nc -z 127.0.0.1 1080 2>/dev/null"]
+      interval: 20s
+      timeout: 15s
+      retries: 30
+      start_period: 180s
+
+  lokinet2:
+    build: ./docker/lokinet-socks
+    privileged: true
+    volumes:
+      - lokinet2data:/var/lib/lokinet
+    healthcheck:
+      test: ["CMD-SHELL", "dig +short +timeout=3 @127.3.2.1 exit.loki A 2>/dev/null | grep -q '[0-9]' && nc -z 127.0.0.1 1080 2>/dev/null"]
+      interval: 20s
+      timeout: 15s
+      retries: 30
+      start_period: 180s
+
+  lokinet3:
+    build: ./docker/lokinet-socks
+    privileged: true
+    volumes:
+      - lokinet3data:/var/lib/lokinet
+    healthcheck:
+      test: ["CMD-SHELL", "dig +short +timeout=3 @127.3.2.1 exit.loki A 2>/dev/null | grep -q '[0-9]' && nc -z 127.0.0.1 1080 2>/dev/null"]
+      interval: 20s
+      timeout: 15s
+      retries: 30
+      start_period: 180s
+
+  lokinet4:
+    build: ./docker/lokinet-socks
+    profiles: [lokinet-extra]
+    privileged: true
+    volumes:
+      - lokinet4data:/var/lib/lokinet
+    healthcheck:
+      test: ["CMD-SHELL", "dig +short +timeout=3 @127.3.2.1 exit.loki A 2>/dev/null | grep -q '[0-9]' && nc -z 127.0.0.1 1080 2>/dev/null"]
+      interval: 20s
+      timeout: 15s
+      retries: 30
+      start_period: 180s
+
+  lokinet5:
+    build: ./docker/lokinet-socks
+    profiles: [lokinet-extra]
+    privileged: true
+    volumes:
+      - lokinet5data:/var/lib/lokinet
+    healthcheck:
+      test: ["CMD-SHELL", "dig +short +timeout=3 @127.3.2.1 exit.loki A 2>/dev/null | grep -q '[0-9]' && nc -z 127.0.0.1 1080 2>/dev/null"]
+      interval: 20s
+      timeout: 15s
+      retries: 30
+      start_period: 180s
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: darkscraper
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  darkscraper:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      tor1:
+        condition: service_healthy
+      tor2:
+        condition: service_healthy
+      tor3:
+        condition: service_healthy
+      i2p1:
+        condition: service_healthy
+      i2p2:
+        condition: service_healthy
+      i2p3:
+        condition: service_healthy
+      freenet1:
+        condition: service_started
+      freenet2:
+        condition: service_started
+      freenet3:
+        condition: service_started
+      lokinet1:
+        condition: service_started
+      lokinet2:
+        condition: service_started
+      lokinet3:
+        condition: service_started
+      zeronet1:
+        condition: service_started
+      zeronet2:
+        condition: service_started
+      zeronet3:
+        condition: service_started
+    volumes:
+      - ./config:/etc/darkscraper:ro
+      - darkscraperdata:/data
+    environment:
+      RUST_LOG: info
+      # --- Network instance counts (for proxy list generation) ---
+      TOR_INSTANCES: ${TOR_INSTANCES:-3}
+      I2P_INSTANCES: ${I2P_INSTANCES:-3}
+      ZERONET_INSTANCES: ${ZERONET_INSTANCES:-3}
+      FREENET_INSTANCES: ${FREENET_INSTANCES:-3}
+      LOKINET_INSTANCES: ${LOKINET_INSTANCES:-3}
+      # --- Network worker tuning (override via docker compose up) ---
+      TOR_WORKERS: ${TOR_WORKERS:-32}
+      TOR_ENABLED: ${TOR_ENABLED:-true}
+      I2P_WORKERS: ${I2P_WORKERS:-8}
+      I2P_ENABLED: ${I2P_ENABLED:-true}
+      ZERONET_WORKERS: ${ZERONET_WORKERS:-8}
+      ZERONET_ENABLED: ${ZERONET_ENABLED:-true}
+      FREENET_WORKERS: ${FREENET_WORKERS:-8}
+      FREENET_ENABLED: ${FREENET_ENABLED:-true}
+      LOKINET_WORKERS: ${LOKINET_WORKERS:-8}
+      LOKINET_ENABLED: ${LOKINET_ENABLED:-true}
+      MAX_DEPTH: ${MAX_DEPTH:-10}
+    entrypoint: ["darkscraper", "--config", "/etc/darkscraper/default.toml"]
+    command: ["crawl"]
+
+volumes:
+  pgdata:
+  tor1data:
+  tor2data:
+  tor3data:
+  tor4data:
+  tor5data:
+  i2p1data:
+  i2p2data:
+  i2p3data:
+  i2p4data:
+  i2p5data:
+  zeronet1data:
+  zeronet2data:
+  zeronet3data:
+  zeronet4data:
+  zeronet5data:
+  freenet1data:
+  freenet2data:
+  freenet3data:
+  freenet4data:
+  freenet5data:
+  lokinet1data:
+  lokinet2data:
+  lokinet3data:
+  lokinet4data:
+  lokinet5data:
+  darkscraperdata:
+  grafanadata:

@@ -1,0 +1,148 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    { "title": "Overview", "url": "/d/darkscraper-main", "type": "link" },
+    { "title": "I2P Dashboard", "url": "/d/darkscraper-i2p", "type": "link" },
+    { "title": "ZeroNet Dashboard", "url": "/d/darkscraper-zeronet", "type": "link" },
+    { "title": "Freenet Dashboard", "url": "/d/darkscraper-freenet", "type": "link" },
+    { "title": "Lokinet Dashboard", "url": "/d/darkscraper-lokinet", "type": "link" }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Tor Pages Crawled",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{ "rawSql": "SELECT COUNT(*) AS \"Pages\" FROM pages WHERE network = 'tor';", "format": "table", "refId": "A" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "purple", "value": null }, { "color": "green", "value": 10 }] } }, "overrides": [] }
+    },
+    {
+      "id": 2,
+      "title": "Tor Entities",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{ "rawSql": "SELECT COUNT(*) AS \"Entities\" FROM entities e JOIN pages p ON e.page_id = p.id WHERE p.network = 'tor';", "format": "table", "refId": "A" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "purple", "value": null }, { "color": "orange", "value": 50 }] } }, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "title": "Tor Links",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{ "rawSql": "SELECT COUNT(*) AS \"Links\" FROM links l JOIN pages p ON l.source_page_id = p.id WHERE p.network = 'tor';", "format": "table", "refId": "A" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "purple", "value": null }, { "color": "green", "value": 50 }] } }, "overrides": [] }
+    },
+    {
+      "id": 4,
+      "title": "Unique .onion Domains",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{ "rawSql": "SELECT COUNT(DISTINCT domain) AS \"Domains\" FROM pages WHERE network = 'tor';", "format": "table", "refId": "A" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "purple", "value": null }, { "color": "yellow", "value": 10 }] } }, "overrides": [] }
+    },
+    {
+      "id": 5,
+      "title": "Tor Pages Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{ "rawSql": "SELECT date_trunc('minute', fetched_at) AS time, COUNT(*) AS pages FROM pages WHERE network = 'tor' GROUP BY 1 ORDER BY 1;", "format": "time_series", "refId": "A" }],
+      "fieldConfig": { "defaults": { "color": { "fixedColor": "purple", "mode": "fixed" }, "custom": { "fillOpacity": 20, "lineWidth": 2, "drawStyle": "bars" } }, "overrides": [] }
+    },
+    {
+      "id": 6,
+      "title": "Avg Response Time (ms)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{ "rawSql": "SELECT date_trunc('minute', fetched_at) AS time, AVG(response_time_ms)::int AS avg_ms FROM pages WHERE network = 'tor' AND response_time_ms > 0 GROUP BY 1 ORDER BY 1;", "format": "time_series", "refId": "A" }],
+      "fieldConfig": { "defaults": { "color": { "fixedColor": "orange", "mode": "fixed" }, "custom": { "fillOpacity": 10, "lineWidth": 2 }, "unit": "ms" }, "overrides": [] }
+    },
+    {
+      "id": 7,
+      "title": "Tor Entity Types",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 12 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{ "rawSql": "SELECT e.entity_type, COUNT(*) AS count FROM entities e JOIN pages p ON e.page_id = p.id WHERE p.network = 'tor' GROUP BY e.entity_type ORDER BY count DESC;", "format": "table", "refId": "A" }],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 8,
+      "title": "Top 20 .onion Domains by Pages",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 12 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{ "rawSql": "SELECT domain, COUNT(*) AS pages FROM pages WHERE network = 'tor' GROUP BY domain ORDER BY pages DESC LIMIT 20;", "format": "table", "refId": "A" }],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 9,
+      "title": "HTTP Status Codes (Tor)",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 20 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{ "rawSql": "SELECT status_code::text AS status, COUNT(*) AS count FROM pages WHERE network = 'tor' GROUP BY status_code ORDER BY count DESC;", "format": "table", "refId": "A" }],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 10,
+      "title": "Tor Correlations",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 20 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{ "rawSql": "SELECT c.correlation_type, COUNT(*) AS count FROM correlations c WHERE c.domain LIKE '%.onion' GROUP BY c.correlation_type ORDER BY count DESC;", "format": "table", "refId": "A" }],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 11,
+      "title": "Recent Tor Entities",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{ "rawSql": "SELECT e.entity_type, e.value, p.domain, e.found_at FROM entities e JOIN pages p ON e.page_id = p.id WHERE p.network = 'tor' ORDER BY e.found_at DESC LIMIT 50;", "format": "table", "refId": "A" }],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 12,
+      "title": "Recent Tor Pages",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{ "rawSql": "SELECT domain, title, status_code, response_time_ms, fetched_at FROM pages WHERE network = 'tor' ORDER BY fetched_at DESC LIMIT 50;", "format": "table", "refId": "A" }],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 13,
+      "title": "Onion Link Graph (Source -> Target)",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 36 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{ "rawSql": "SELECT p.domain AS source_domain, substring(l.target_url from '://([^/]+)') AS target_domain, COUNT(*) AS link_count FROM links l JOIN pages p ON l.source_page_id = p.id WHERE p.network = 'tor' AND l.is_onion = true GROUP BY source_domain, target_domain ORDER BY link_count DESC LIMIT 50;", "format": "table", "refId": "A" }],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 14,
+      "title": "Cross-Site Correlations (.onion domains)",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 44 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "darkscraper-pg" },
+      "targets": [{ "rawSql": "SELECT c.correlation_type, c.value, array_agg(DISTINCT c.domain) AS domains, COUNT(DISTINCT c.domain) AS domain_count FROM correlations c WHERE c.domain LIKE '%.onion' GROUP BY c.correlation_type, c.value HAVING COUNT(DISTINCT c.domain) > 1 ORDER BY domain_count DESC LIMIT 30;", "format": "table", "refId": "A" }],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["darkscraper", "tor", "onion"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Tor Network",
+  "uid": "darkscraper-tor"
+}

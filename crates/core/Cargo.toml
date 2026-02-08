@@ -1,0 +1,14 @@
+[package]
+name = "darkscraper-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+url = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
