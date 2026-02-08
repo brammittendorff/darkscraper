@@ -33,8 +33,8 @@ enabled = true
 http_proxies = ["freenet1:8888", "freenet2:8888", "freenet3:8888"]
 max_concurrency = 8
 min_delay_seconds = 0
-connect_timeout_seconds = 30
-request_timeout_seconds = 60
+connect_timeout_seconds = 120
+request_timeout_seconds = 300
 
 [lokinet]
 enabled = true
