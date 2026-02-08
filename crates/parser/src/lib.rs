@@ -3,9 +3,40 @@ pub mod html;
 
 use darkscraper_core::{CrawlError, FetchResponse, PageData, PageMetadata};
 use sha2::{Digest, Sha256};
+use url::Url;
 
 /// Max bytes to parse (5 MB). Larger pages are truncated before parsing.
 const MAX_PARSE_SIZE: usize = 5 * 1024 * 1024;
+
+/// Extract domain from URL, handling special schemes like Hyphanet
+fn extract_domain(url: &Url) -> String {
+    // For standard URLs, use host
+    if let Some(host) = url.host_str() {
+        return host.to_string();
+    }
+
+    // For Hyphanet URLs like hyphanet:USK@.../sitename/edition/
+    // Extract the site name as the domain
+    if url.scheme() == "hyphanet" || url.scheme() == "freenet" {
+        let path = url.path();
+        // Format: USK@key/sitename/edition/ or SSK@key/sitename/ or CHK@key/
+        let parts: Vec<&str> = path.split('/').collect();
+        if parts.len() >= 2 {
+            // parts[0] = "USK@key", parts[1] = "sitename"
+            if let Some(sitename) = parts.get(1) {
+                if !sitename.is_empty() {
+                    return sitename.to_string();
+                }
+            }
+        }
+        // Fallback: use the entire key as domain
+        if let Some(first_part) = parts.first() {
+            return first_part.to_string();
+        }
+    }
+
+    "unknown".to_string()
+}
 
 pub fn parse_response(resp: &FetchResponse) -> Result<PageData, CrawlError> {
     let body = if resp.body.len() > MAX_PARSE_SIZE {
@@ -63,7 +94,7 @@ pub fn parse_response(resp: &FetchResponse) -> Result<PageData, CrawlError> {
     hasher.update(&resp.body);
     let raw_html_hash = format!("{:x}", hasher.finalize());
 
-    let domain = resp.url.host_str().unwrap_or("unknown").to_string();
+    let domain = resp.domain.clone();
 
     // Extract metadata from response headers
     let metadata = PageMetadata {

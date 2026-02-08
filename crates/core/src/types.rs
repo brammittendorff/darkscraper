@@ -97,6 +97,7 @@ pub struct FetchResponse {
     pub fetched_at: chrono::DateTime<chrono::Utc>,
     pub network: String,
     pub response_time_ms: u64,
+    pub domain: String,  // Network-specific domain extraction (host for HTTP, site name for Hyphanet, etc.)
 }
 
 /// What we extract from every page

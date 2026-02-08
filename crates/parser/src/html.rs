@@ -129,14 +129,44 @@ fn extract_links(document: &Html, base_url: &Url, base_domain: &str) -> Vec<Extr
                 return None;
             }
 
+            // Special handling for Hyphanet links (before url.join)
+            // Hyphanet base URLs use hyphanet: scheme which doesn't support standard joining
+            if (base_url.scheme() == "hyphanet" || base_url.scheme() == "freenet") &&
+               (href.starts_with("/USK@") || href.starts_with("/SSK@") || href.starts_with("/CHK@") ||
+                href.starts_with("/freenet:") || href.starts_with("/hyphanet:")) {
+                let key = if href.starts_with("/freenet:") || href.starts_with("/hyphanet:") {
+                    href.trim_start_matches("/freenet:").trim_start_matches("/hyphanet:")
+                } else {
+                    href.trim_start_matches("/")
+                };
+                return Some(ExtractedLink {
+                    url: format!("hyphanet:{}", key),
+                    anchor_text: {
+                        let t = el.text().collect::<String>().trim().to_string();
+                        if t.is_empty() { None } else { Some(t) }
+                    },
+                    is_onion: false,
+                    is_i2p: false,
+                    is_zeronet: false,
+                    is_hyphanet: true,
+                    is_lokinet: false,
+                    is_external: true,
+                });
+            }
+
             let resolved = base_url.join(href).ok()?;
             let host = resolved.host_str().unwrap_or("");
 
             // Convert FProxy gateway URLs back to hyphanet: scheme
             // e.g., http://hyphanet1:8888/USK@.../site/0/ -> hyphanet:USK@.../site/0/
+            // Also handle /freenet:USK@ and /hyphanet:USK@ formats from FProxy
             let (final_url, is_hyphanet_link) = if resolved.scheme() == "http" || resolved.scheme() == "https" {
                 let path = resolved.path();
-                if path.starts_with("/USK@") || path.starts_with("/SSK@") || path.starts_with("/CHK@") {
+                if path.starts_with("/freenet:") || path.starts_with("/hyphanet:") {
+                    // FProxy format: /freenet:USK@... or /hyphanet:USK@...
+                    let key = path.trim_start_matches("/freenet:").trim_start_matches("/hyphanet:");
+                    (format!("hyphanet:{}", key), true)
+                } else if path.starts_with("/USK@") || path.starts_with("/SSK@") || path.starts_with("/CHK@") {
                     // This is a Hyphanet key accessed via FProxy gateway
                     (format!("hyphanet:{}", path), true)
                 } else {

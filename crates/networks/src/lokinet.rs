@@ -112,6 +112,7 @@ impl NetworkDriver for LokinetDriver {
         }
 
         let elapsed = start.elapsed();
+        let domain = url.host_str().unwrap_or("unknown").to_string();
 
         Ok(FetchResponse {
             url: url.clone(),
@@ -123,6 +124,7 @@ impl NetworkDriver for LokinetDriver {
             fetched_at: chrono::Utc::now(),
             network: "lokinet".to_string(),
             response_time_ms: elapsed.as_millis() as u64,
+            domain,
         })
     }
 

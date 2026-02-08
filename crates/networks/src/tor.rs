@@ -107,6 +107,7 @@ impl NetworkDriver for TorDriver {
         }
 
         let elapsed = start.elapsed();
+        let domain = url.host_str().unwrap_or("unknown").to_string();
 
         Ok(FetchResponse {
             url: url.clone(),
@@ -118,6 +119,7 @@ impl NetworkDriver for TorDriver {
             fetched_at: chrono::Utc::now(),
             network: "tor".to_string(),
             response_time_ms: elapsed.as_millis() as u64,
+            domain,
         })
     }
 

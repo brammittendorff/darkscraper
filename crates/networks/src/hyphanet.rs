@@ -30,6 +30,29 @@ pub struct HyphanetDriver {
 }
 
 impl HyphanetDriver {
+    /// Extract domain (site name) from Hyphanet USK/SSK URL
+    /// Example: USK@key/clean-spider/37/ -> "clean-spider"
+    fn extract_domain(url: &Url) -> String {
+        let path = url.path();
+        let parts: Vec<&str> = path.split('/').collect();
+        // Format: USK@key/sitename/edition/ or SSK@key/sitename/
+        if parts.len() >= 2 {
+            if let Some(sitename) = parts.get(1) {
+                if !sitename.is_empty() {
+                    return sitename.to_string();
+                }
+            }
+        }
+        // Fallback: use first 20 chars of key as identifier
+        if let Some(first) = parts.first() {
+            if first.len() > 20 {
+                return first[..20].to_string();
+            }
+            return first.to_string();
+        }
+        "unknown".to_string()
+    }
+
     pub fn new(
         proxy_addrs: &[String],
         max_concurrency: usize,
@@ -161,6 +184,7 @@ impl NetworkDriver for HyphanetDriver {
         }
 
         let elapsed = start.elapsed();
+        let domain = Self::extract_domain(url);
 
         Ok(FetchResponse {
             url: url.clone(),
@@ -172,6 +196,7 @@ impl NetworkDriver for HyphanetDriver {
             fetched_at: chrono::Utc::now(),
             network: "hyphanet".to_string(),
             response_time_ms: elapsed.as_millis() as u64,
+            domain,
         })
     }
 
