@@ -79,14 +79,23 @@ pub const ZERONET_SEEDS: &[&str] = &[
 
 // Freenet/Hyphanet freesite seeds
 pub const FREENET_SEEDS: &[&str] = &[
-    // Indexes and search engines (most important for discovery)
+    // Indexes and directories (most important for discovery)
     "freenet:USK@5ijbfKSJ4kPZTRDzq363CHteEUiSZjrO-E36vbHvnIU,ZEZqPXeuYiyokY2r0wkhJr5cy7KBH9omkuWDqSC6PLs,AQACAAE/clean-spider/37/",
-    "freenet:USK@XJZAi25dd5y7lrxE3cHMmM-xZ-c-hlPpKLYeLC0YG5I,8XTbR1bd9RBXlX6j-OZNednsJ8Cl6EAeBBebC3jtMFU,AQACAAE/search/0/",
     "freenet:USK@US6gHsNApDvyShI~sBHGEOplJ3pwZUDhLqTAas6rO4c,3jeU5OwV0-K4B6HRBznDYGvpu2PRUuwL0V110rn-~8g,AQACAAE/freenet-index/5/",
-    "freenet:USK@bt6o0REPxC8USh5IM1wg65p1DG-h8pqlZQFsdrkG6HU,1-YF9KPJiEPhktMFkfWZDYDSh2sWvqHm1bWbdloltP4,AQACAAE/mywiki/0/",
-    // Original seeds
     "freenet:USK@QRZAI1nSm~dAY2hTgiW1-C7P3CEGV9tqKaSOSmLiDMI,DcnBm6MV9zPKaT3MHRmBisfzI8tDhjVBNyjaHIJx5Oo,AQACAAE/activelink-index/0/",
     "freenet:USK@pXTEkrmFi9FIhv3EAf8p4MRPKHmn4U-Y2LUsPfEvbdg,SDnSl03Gbl1r1oKz6fy4qj35gEIieGS3lYq8K5MFb5Q,AQACAAE/index/0/",
+    // Wikis and community sites
+    "freenet:USK@bt6o0REPxC8USh5IM1wg65p1DG-h8pqlZQFsdrkG6HU,1-YF9KPJiEPhktMFkfWZDYDSh2sWvqHm1bWbdloltP4,AQACAAE/mywiki/0/",
+    "freenet:USK@b2qNKBPnGtx9gDBDqiNCXzxQWZZVX-13Ndo---SBK80,F4F-zo2vAfMmIKY11uEwV~XS~vHJPh9V2dC7hsf538I,AQACAAE/site/0/",
+    "freenet:USK@CXyhHjqoP9yWXcaZWXJ2iXVUeSaxDi7pU-nPUJrg4vE,ZyLuum~BNkGr616D~yD1S0o22AzfwUTWy6Z4-~YzoMg,AQACAAE/site/0/",
+    "freenet:USK@UHw2~SAEv7EAmfhb4SO6EVLWRo6NHbKUte-BJ72isCg,v6y94~qHCRvfKdM-90dxC2rHSvykgyEYoZLp45a26NU,AQACAAE/site/0/",
+    // Additional freesites from hyphanet directory
+    "freenet:USK@7hOXSNsndWPqw1p64zv6xYaAR10P3CceoYuiriatOpQ,McLE4bFGqqSA4j3JlJvxZQXOh-ESaKCLa6NM2VAscY4,AQACAAE/freesite/0/",
+    "freenet:USK@McZbP~X3e4JCf7rCaRPo14rgSy5-HqBEf8Lb8NqMSXM,aCSLc34wGijYloclb3P~8X7BuwK~PIqD3A2j3ICwsW4,AQACAAE/freesite/0/",
+    "freenet:USK@cvZEZFWynx~4hmakaimts4Ruusl9mEUpU6mSvNvZ9p8,K2Xopc6GWPkKrs27EDuqzTcca2bE5H2YAXw0qKnkON4,AQACAAE/blog/0/",
+    "freenet:USK@CjdrIg9kZn0mzmKTPuofupZmsdvB5Ruas7wyZrekRmM,uhrRUrkJ18IOGtTraf4wVQ1LSlweOXcipZ9BNwv4Kgw,AQACAAE/site/0/",
+    "freenet:USK@80xMKNcgl8~1Tc3BPp6o3Md7QBlxUM80zp04TK93Ng4,Jr9J3x46YInFSUjeGdVRpXAUXqWHhDLuxXg1VpZaO1Y,AQACAAE/content/0/",
+    "freenet:USK@7vBUpbd1AJPX-L9wfR-nzeDEZye7PyXqyS5nzi1D~U4,NZOuYXNJpX22lvEqd~OyO-uJZsrvZoirjZaMsPgax7k,AQACAAE/homepage/0/",
 ];
 
 // Lokinet SNApp seeds
