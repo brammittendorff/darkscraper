@@ -23,10 +23,10 @@ request_timeout_seconds = 90
 [zeronet]
 enabled = true
 http_proxies = ["zeronet1:43110", "zeronet2:43110", "zeronet3:43110"]
-max_concurrency = 8
-min_delay_seconds = 0
-connect_timeout_seconds = 30
-request_timeout_seconds = 60
+max_concurrency = 4
+min_delay_seconds = 2
+connect_timeout_seconds = 60
+request_timeout_seconds = 180
 
 [hyphanet]
 enabled = true

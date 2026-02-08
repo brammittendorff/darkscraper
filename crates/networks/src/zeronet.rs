@@ -61,11 +61,13 @@ impl ZeronetDriver {
 
     /// Convert a .bit URL to a ZeroNet proxy URL.
     /// e.g. http://talk.bit/page → http://zeronet1:43110/talk.bit/page
+    /// ZeroNet expects the format: http://proxy:43110/{address}.bit{path}
     fn to_proxy_url(&self, url: &Url, idx: usize) -> String {
         let host = url.host_str().unwrap_or("");
         let path = url.path();
         let query = url.query().map(|q| format!("?{}", q)).unwrap_or_default();
-        format!("{}/{}{}{}", self.proxy_bases[idx], host, path, query)
+        let fragment = url.fragment().map(|f| format!("#{}", f)).unwrap_or_default();
+        format!("{}/{}{}{}{}", self.proxy_bases[idx], host, path, query, fragment)
     }
 }
 
@@ -88,11 +90,14 @@ impl NetworkDriver for ZeronetDriver {
 
         let resp = client
             .get(&proxy_url)
-            .header("Accept", "text/html,application/xhtml+xml,*/*")
+            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+            .header("Accept-Encoding", "gzip, deflate")
+            .header("Accept-Language", "en-US,en;q=0.9")
+            .header("User-Agent", "Mozilla/5.0 (DarkScraper/1.0; +https://github.com/yourusername/darkscraper)")
             .send()
             .await
             .map_err(|e| {
-                warn!(url = %url, error = %e, "zeronet fetch failed");
+                warn!(url = %url, proxy_url = %proxy_url, error = %e, "zeronet fetch failed");
                 CrawlError::Network(e.to_string())
             })?;
 
@@ -144,10 +149,11 @@ impl NetworkDriver for ZeronetDriver {
     }
 
     fn retry_policy(&self) -> (bool, u64) {
-        // ZeroNet is P2P but generally stable
-        // Sites can be temporarily unavailable if peers are offline
-        // Retry periodically to catch sites coming back online
-        (false, 7200) // no startup clear, retry every 2 hours
+        // ZeroNet network is mostly dead as of 2026 (sparse peers, low activity)
+        // Sites are very often unavailable due to lack of seeds
+        // Retry very infrequently to avoid wasting resources
+        // Most failures are permanent (dead network, not dead sites)
+        (false, 86400) // no startup clear, retry every 24 hours (network barely alive)
     }
 
     fn classify_error(&self, error: &str) -> &'static str {
@@ -157,7 +163,9 @@ impl NetworkDriver for ZeronetDriver {
         if error_lower.contains("404") ||
            error_lower.contains("not found") ||
            error_lower.contains("invalid address") ||
-           error_lower.contains("site not found") {
+           error_lower.contains("site not found") ||
+           error_lower.contains("invalid site") ||
+           error_lower.contains("unknown site") {
             return "dead"; // Site truly doesn't exist
         }
 
@@ -166,7 +174,12 @@ impl NetworkDriver for ZeronetDriver {
         if error_lower.contains("timeout") ||
            error_lower.contains("no peers") ||
            error_lower.contains("connection") ||
-           error_lower.contains("error sending request") {
+           error_lower.contains("error sending request") ||
+           error_lower.contains("site loading") ||
+           error_lower.contains("downloading") ||
+           error_lower.contains("waiting for peers") ||
+           error_lower.contains("503") || // Service temporarily unavailable
+           error_lower.contains("gateway") {
             return "unreachable"; // Peers offline, retry later
         }
 
