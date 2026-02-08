@@ -21,7 +21,7 @@ connect_timeout_seconds = 45
 request_timeout_seconds = 90
 
 [zeronet]
-enabled = true
+enabled = false  # DISABLED Feb 2026: Network dead - zero active peers/seeders despite working trackers
 http_proxies = ["zeronet1:43110", "zeronet2:43110", "zeronet3:43110"]
 max_concurrency = 4
 min_delay_seconds = 2

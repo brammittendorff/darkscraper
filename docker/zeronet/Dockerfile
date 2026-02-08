@@ -34,7 +34,8 @@ RUN pip install --no-cache-dir \
     rsa \
     setuptools \
     rich \
-    defusedxml
+    defusedxml \
+    requests
 
 # Create data directory and set permissions
 RUN mkdir -p /app/data /app/log && \

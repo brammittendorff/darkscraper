@@ -13,40 +13,44 @@ if [ -d "/app/plugins/Bootstrapper" ] && [ ! -f "/app/plugins/disabled/Bootstrap
     echo "BootStrapper plugin enabled for peer discovery"
 fi
 
-# Create comprehensive trackers file with known working ZeroNet trackers
+# Create trackers file with CURRENT working trackers (updated Feb 8, 2026)
+# Source: https://github.com/ngosang/trackerslist (updated daily)
 mkdir -p /app/data
 cat > /app/data/trackers.txt << 'EOF'
-# ZeroNet-specific trackers
-zero://boot3rdez4rzn36x.onion:15441
-zero://zero.booth.moe#f36ca555bee6ba216b14d10f38c16f7769ff064e0e37d887603548cc2e64191d:15441
-# UDP trackers (most reliable for BitTorrent DHT)
-udp://tracker.coppersurfer.tk:6969
-udp://9.rarbg.com:2710
+# Working UDP trackers from ngosang/trackerslist (Feb 8, 2026)
 udp://tracker.opentrackr.org:1337/announce
-udp://tracker.internetwarriors.net:1337/announce
-udp://tracker.leechers-paradise.org:6969/announce
-udp://exodus.desync.com:6969/announce
-udp://tracker.cyberia.is:6969/announce
+udp://open.demonii.com:1337/announce
+udp://open.tracker.cl:1337/announce
 udp://open.stealth.si:80/announce
 udp://tracker.torrent.eu.org:451/announce
-udp://tracker.tiny-vps.com:6969/announce
-udp://open.demonii.com:1337/announce
-udp://tracker.openbittorrent.com:6969/announce
-udp://tracker.moeking.me:6969/announce
-udp://explodie.org:6969/announce
-udp://tracker1.bt.moack.co.kr:80/announce
-udp://tracker.uw0.xyz:6969/announce
+udp://wepzone.net:6969/announce
+udp://tracker1.myporn.club:9337/announce
+udp://tracker.theoks.net:6969/announce
+udp://tracker.srv00.com:6969/announce
+udp://tracker.qu.ax:6969/announce
+udp://tracker.corpscorp.online:80/announce
+udp://tracker.bittor.pw:1337/announce
+udp://tracker.1h.is:1337/announce
+udp://tracker-udp.gbitt.info:80/announce
+udp://t.overflow.biz:6969/announce
+udp://opentracker.io:6969/announce
+udp://leet-tracker.moe:1337/announce
+udp://zer0day.ch:1337/announce
+udp://utracker.ghostchu-services.top:6969/announce
+udp://tracker.zupix.online:6969/announce
+udp://tracker.tryhackx.org:6969/announce
+udp://tracker.torrust-demo.com:6969/announce
+udp://tracker.theoks.net:6969/announce
+udp://tracker.opentorrent.top:6969/announce
+udp://tracker.gmi.gd:6969/announce
+udp://tracker.fnix.net:6969/announce
 udp://tracker.dler.org:6969/announce
-udp://retracker.lanta-net.ru:2710/announce
-udp://denis.stalker.upeer.me:6969/announce
-# HTTP trackers (fallback)
-http://tracker.opentrackr.org:1337/announce
-http://explodie.org:6969/announce
-http://tracker2.itzmx.com:6961/announce
-http://tracker1.itzmx.com:8080/announce
-http://open.acgnxtracker.com:80/announce
-http://t.nyaatracker.com:80/announce
-http://retracker.mgts.by:80/announce
+udp://explodie.org:6969/announce
+udp://evan.im:6969/announce
+# HTTPS trackers (best)
+https://tracker.zhuqiy.com:443/announce
+https://tracker.pmman.tech:443/announce
+https://tracker.moeking.me:443/announce
 EOF
 
 # Start ZeroNet with enhanced peer discovery and aggressive settings
