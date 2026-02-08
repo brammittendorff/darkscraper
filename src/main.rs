@@ -33,6 +33,58 @@ async fn main() -> Result<()> {
     // Environment variable overrides for worker/concurrency tuning
     let parse_workers =
         |v: &str| -> Option<usize> { v.parse::<usize>().ok().filter(|&n| n > 0 && n <= 128) };
+
+    // SCALE_LEVEL: Simple 1-5 scaling - sets all networks proportionally
+    // Usage: SCALE_LEVEL=3 docker compose up
+    if let Ok(v) = std::env::var("SCALE_LEVEL") {
+        if let Ok(level) = v.parse::<usize>() {
+            if level >= 1 && level <= 5 {
+                // Tor: Most content, fast network - scale aggressively
+                // Level 1=16w, 2=48w, 3=64w, 4=96w, 5=128w
+                config.tor.max_concurrency = match level {
+                    1 => 16,
+                    2 => 48,
+                    3 => 64,
+                    4 => 96,
+                    5 => 128,
+                    _ => 32,
+                };
+                std::env::set_var("TOR_INSTANCES", (level * 2).min(10).to_string());
+
+                // I2P: Moderate content, moderate latency (1x instances, 4x workers)
+                config.i2p.max_concurrency = level * 4;
+                std::env::set_var("I2P_INSTANCES", level.to_string());
+
+                // Hyphanet: Very slow network, cap at 3 instances (2x workers, max 12)
+                config.hyphanet.max_concurrency = (level * 2).min(12);
+                std::env::set_var("HYPHANET_INSTANCES", level.min(3).to_string());
+
+                // Lokinet: Limited content, cap at 4 instances (4x workers, max 20)
+                config.lokinet.max_concurrency = (level * 4).min(20);
+                std::env::set_var("LOKINET_INSTANCES", level.min(4).to_string());
+
+                // Scale crawl limits
+                config.general.max_pages_per_domain = match level {
+                    1 => 50,   2 => 100,  3 => 200,  4 => 500,  5 => 1000, _ => 200,
+                };
+                config.general.max_depth = match level {
+                    1 => 5,    2 => 8,    3 => 10,   4 => 15,   5 => 25,   _ => 10,
+                };
+
+                eprintln!("🎚️  SCALE_LEVEL={}: Tor={}i/{}w, I2P={}i/{}w, Hyphanet={}i/{}w, Lokinet={}i/{}w | depth={}, pages/domain={}",
+                    level,
+                    (level * 2).min(10), config.tor.max_concurrency,
+                    level, level * 4,
+                    level.min(3), (level * 2).min(12),
+                    level.min(4), (level * 4).min(20),
+                    config.general.max_depth,
+                    config.general.max_pages_per_domain
+                );
+            }
+        }
+    }
+
+    // Individual overrides (can override SCALE_LEVEL)
     if let Ok(v) = std::env::var("TOR_WORKERS") {
         if let Some(n) = parse_workers(&v) {
             config.tor.max_concurrency = n;

@@ -28,12 +28,20 @@ impl TorDriver {
             return Err(CrawlError::Proxy("no tor socks proxies configured".into()));
         }
 
-        let mut clients = Vec::with_capacity(socks_addrs.len());
-        for addr in socks_addrs {
-            let proxy = rquest::Proxy::all(format!("socks5h://{}", addr))
-                .map_err(|e| CrawlError::Proxy(e.to_string()))?;
+        let mut clients = Vec::new();
+        let mut working_addrs = Vec::new();
 
-            let client = rquest::Client::builder()
+        for addr in socks_addrs {
+            // Try to create proxy - skip if it doesn't exist/resolve
+            let proxy = match rquest::Proxy::all(format!("socks5h://{}", addr)) {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!("⚠️  Skipping tor proxy {}: {}", addr, e);
+                    continue;
+                }
+            };
+
+            match rquest::Client::builder()
                 .emulation(Emulation::Firefox128)
                 .proxy(proxy)
                 .cookie_store(true)
@@ -41,10 +49,22 @@ impl TorDriver {
                 .timeout(Duration::from_secs(request_timeout_seconds))
                 .cert_verification(false)
                 .build()
-                .map_err(|e| CrawlError::Network(e.to_string()))?;
-
-            clients.push(client);
+            {
+                Ok(client) => {
+                    clients.push(client);
+                    working_addrs.push(addr.clone());
+                }
+                Err(e) => {
+                    eprintln!("⚠️  Skipping tor proxy {}: {}", addr, e);
+                }
+            }
         }
+
+        if clients.is_empty() {
+            return Err(CrawlError::Proxy("no working tor proxies found".into()));
+        }
+
+        eprintln!("✅ Tor: Using {} of {} configured proxies", clients.len(), socks_addrs.len());
 
         Ok(Self {
             clients,

@@ -20,3 +20,4 @@ Cargo.lock
 # Docker volumes
 /pgdata/
 /grafanadata/
+docker/i2p/router.config/

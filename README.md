@@ -113,17 +113,31 @@ docker compose logs i2p1 -f
 docker compose logs -f darkscraper
 ```
 
-### Scaled Setup
+### Performance Scaling
 
-For higher throughput, launch additional network instances:
+Use `SCALE_LEVEL` (1-5) for automatic balanced scaling:
 
 ```bash
-# Launch with 5 instances of each network
-TOR_INSTANCES=5 I2P_INSTANCES=5 \
-HYPHANET_INSTANCES=5 LOKINET_INSTANCES=5 \
-docker compose --profile tor-extra --profile i2p-extra \
+# Level 1: Minimal (6GB RAM, 4 cores) - ~200 pages/hour
+SCALE_LEVEL=1 docker compose up -d
+
+# Level 2: Light (12GB RAM, 8 cores) - ~600 pages/hour
+SCALE_LEVEL=2 docker compose up -d
+
+# Level 3: Standard [DEFAULT] (18GB RAM, 12 cores) - ~1200 pages/hour
+SCALE_LEVEL=3 docker compose up -d
+
+# Level 4: Performance (28GB RAM, 16 cores) - ~2500 pages/hour
+SCALE_LEVEL=4 docker compose --profile tor-extra --profile i2p-extra \
+  --profile hyphanet-extra --profile lokinet-extra up -d
+
+# Level 5: Maximum (40GB RAM, 24 cores) - ~4000 pages/hour
+SCALE_LEVEL=5 docker compose --profile tor-extra --profile i2p-extra \
   --profile hyphanet-extra --profile lokinet-extra up -d
 ```
+
+Each level automatically sets instances and workers proportionally based on network characteristics.
+See `SCALING.md` for detailed breakdown.
 
 ## Network-Specific Information
 
@@ -202,7 +216,12 @@ extract_pgp = true
 
 ### Environment Variables
 
-Override configuration at runtime:
+**Simple Scaling (Recommended):**
+```bash
+SCALE_LEVEL=1-5  # Automatic balanced scaling (see SCALING.md)
+```
+
+**Manual Overrides (Advanced):**
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -210,11 +229,13 @@ Override configuration at runtime:
 | `I2P_WORKERS` | Concurrent I2P crawlers | 8 |
 | `HYPHANET_WORKERS` | Concurrent Hyphanet crawlers | 8 |
 | `LOKINET_WORKERS` | Concurrent Lokinet crawlers | 8 |
-| `TOR_ENABLED` | Enable/disable Tor crawling | true |
-| `I2P_ENABLED` | Enable/disable I2P crawling | true |
-| `MAX_DEPTH` | Maximum crawl depth | 10 |
 | `TOR_INSTANCES` | Number of Tor proxies | 3 |
 | `I2P_INSTANCES` | Number of I2P proxies | 3 |
+| `HYPHANET_INSTANCES` | Number of Hyphanet proxies | 3 |
+| `LOKINET_INSTANCES` | Number of Lokinet proxies | 3 |
+| `TOR_ENABLED` | Enable/disable Tor | true |
+| `I2P_ENABLED` | Enable/disable I2P | true |
+| `MAX_DEPTH` | Maximum crawl depth | 10 |
 
 ## Cryptographic Address Prioritization
 
@@ -384,23 +405,21 @@ darkscraper/
 
 ## Performance Tuning
 
-### Worker Pools
-
-Adjust worker counts based on your hardware:
+### Quick Scaling Examples
 
 ```bash
-# High-performance setup (16+ cores, 16GB+ RAM)
-TOR_WORKERS=64 I2P_WORKERS=16 \
-HYPHANET_WORKERS=16 LOKINET_WORKERS=16 \
-docker compose up -d
+# Start with minimal resources
+SCALE_LEVEL=1 docker compose up -d
+
+# Production setup with good performance
+SCALE_LEVEL=3 docker compose up -d
+
+# Maximum performance (requires --profile flags for 5+ instances)
+SCALE_LEVEL=5 docker compose --profile tor-extra --profile i2p-extra \
+  --profile hyphanet-extra --profile lokinet-extra up -d
 ```
 
-### Network-Specific Tuning
-
-- **Tor**: High concurrency works well (32-64 workers)
-- **I2P**: Lower concurrency recommended (8-16 workers) due to network latency
-- **Hyphanet**: Very low concurrency (4-8 workers) - extremely slow network
-- **Lokinet**: Moderate concurrency (8-16 workers)
+See `SCALING.md` for detailed performance analysis and resource requirements.
 
 ### Resource Requirements
 
