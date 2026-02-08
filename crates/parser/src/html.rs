@@ -134,10 +134,12 @@ fn extract_links(document: &Html, base_url: &Url, base_domain: &str) -> Vec<Extr
             if (base_url.scheme() == "hyphanet" || base_url.scheme() == "freenet") &&
                (href.starts_with("/USK@") || href.starts_with("/SSK@") || href.starts_with("/CHK@") ||
                 href.starts_with("/freenet:") || href.starts_with("/hyphanet:")) {
-                let key = if href.starts_with("/freenet:") || href.starts_with("/hyphanet:") {
-                    href.trim_start_matches("/freenet:").trim_start_matches("/hyphanet:")
+                let key = if href.starts_with("/freenet:") {
+                    href.strip_prefix("/freenet:").unwrap()
+                } else if href.starts_with("/hyphanet:") {
+                    href.strip_prefix("/hyphanet:").unwrap()
                 } else {
-                    href.trim_start_matches("/")
+                    href.strip_prefix("/").unwrap()
                 };
                 return Some(ExtractedLink {
                     url: format!("hyphanet:{}", key),

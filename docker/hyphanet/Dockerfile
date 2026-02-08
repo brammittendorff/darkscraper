@@ -1,16 +1,15 @@
-FROM 5nafu/freenet
+FROM poullorca/hyphanet-node:v0.15.04
 
 USER root
 
-# Install curl for wizard completion script
-RUN apk add --no-cache curl
+# Install curl for testing
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Copy our complete configuration
-COPY freenet-defaults.ini /defaults/freenet.ini
+# Copy our configuration
+COPY freenet-defaults.ini /opt/hyphanet/freenet.ini
 
 COPY --chmod=755 entrypoint.sh /entrypoint.sh
-RUN chown fred:fred /entrypoint.sh
 
-USER fred
+USER hyphanet
 
 CMD ["/entrypoint.sh"]
