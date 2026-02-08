@@ -96,14 +96,31 @@ CREATE TABLE IF NOT EXISTS dead_urls (
     url TEXT NOT NULL UNIQUE,
     network VARCHAR(20),
     domain TEXT,
+    failure_type VARCHAR(20) DEFAULT 'dead', -- 'dead' (permanent) or 'unreachable' (temporary/network)
     reason TEXT,
     retry_count INT DEFAULT 0,
     last_error TEXT,
-    died_at TIMESTAMPTZ DEFAULT NOW()
+    died_at TIMESTAMPTZ DEFAULT NOW(),
+    last_attempt_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_dead_urls_url ON dead_urls(url);
 CREATE INDEX IF NOT EXISTS idx_dead_urls_domain ON dead_urls(domain);
+CREATE INDEX IF NOT EXISTS idx_dead_urls_network_type ON dead_urls(network, failure_type);
+
+-- Add new columns for existing databases
+ALTER TABLE dead_urls ADD COLUMN IF NOT EXISTS failure_type VARCHAR(20) DEFAULT 'dead';
+ALTER TABLE dead_urls ADD COLUMN IF NOT EXISTS last_attempt_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Create view for monitoring dashboard
+CREATE OR REPLACE VIEW network_health AS
+SELECT
+    network,
+    COUNT(*) FILTER (WHERE failure_type = 'dead') as dead_count,
+    COUNT(*) FILTER (WHERE failure_type = 'unreachable') as unreachable_count,
+    COUNT(*) as total_failed
+FROM dead_urls
+GROUP BY network;
 
 CREATE TABLE IF NOT EXISTS crawl_queue (
     id BIGSERIAL PRIMARY KEY,

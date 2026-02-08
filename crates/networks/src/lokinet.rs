@@ -133,4 +133,40 @@ impl NetworkDriver for LokinetDriver {
     fn default_delay(&self) -> Duration {
         self.min_delay
     }
+
+    fn retry_policy(&self) -> (bool, u64) {
+        // Lokinet can have transient network issues, clear on startup
+        // But no periodic retries (network is usually stable once working)
+        (true, 0) // clear_on_startup=true, no periodic retries
+    }
+
+    fn max_pages_per_domain(&self) -> usize {
+        // Lokinet has blockchain explorers (blocks.loki) with infinite pages
+        // Limit heavily to ensure discovery of other SNApps
+        50 // Lower limit: prevent block explorers from dominating
+    }
+
+    fn classify_error(&self, error: &str) -> &'static str {
+        let error_lower = error.to_lowercase();
+
+        // Lokinet-specific permanent failures (dead)
+        if error_lower.contains("404") ||
+           error_lower.contains("not found") ||
+           error_lower.contains("invalid") ||
+           error_lower.contains("nxdomain") {
+            return "dead"; // Address doesn't exist
+        }
+
+        // Lokinet-specific temporary failures (unreachable)
+        // Usually due to SNApp being offline or routing issues
+        if error_lower.contains("error sending request") ||
+           error_lower.contains("connection") ||
+           error_lower.contains("timeout") ||
+           error_lower.contains("refused") {
+            return "unreachable"; // SNApp offline or network issue
+        }
+
+        // Default: unreachable (Lokinet can be flaky)
+        "unreachable"
+    }
 }

@@ -14,6 +14,57 @@ pub trait NetworkDriver: Send + Sync + 'static {
     async fn fetch(&self, url: &Url, config: &FetchConfig) -> Result<FetchResponse, CrawlError>;
     fn max_concurrency(&self) -> usize;
     fn default_delay(&self) -> Duration;
+
+    /// Network-specific retry configuration
+    /// Returns (clear_dead_on_startup, periodic_retry_interval_secs)
+    /// - clear_dead_on_startup: Whether to clear dead URLs from previous sessions
+    /// - periodic_retry_interval_secs: How often to retry dead URLs (0 = never)
+    fn retry_policy(&self) -> (bool, u64) {
+        (false, 0) // Default: no automatic retries
+    }
+
+    /// Maximum retry attempts before marking URL as permanently dead
+    /// Different networks have different reliability characteristics
+    fn max_retries(&self) -> u32 {
+        4 // Default: 4 retries for most networks
+    }
+
+    /// Maximum pages to crawl per domain before stopping
+    /// Prevents single domains (blockchain explorers, infinite pagination) from monopolizing resources
+    fn max_pages_per_domain(&self) -> usize {
+        100 // Default: 100 pages per domain
+    }
+
+    /// Classify fetch error as either "dead" (permanent) or "unreachable" (temporary/network)
+    /// This is network-specific because different networks have different failure modes
+    /// - "dead": 404, 410, DNS failure, invalid address, content not found
+    /// - "unreachable": timeout, connection refused, tunnel failure, insufficient peers
+    fn classify_error(&self, error: &str) -> &'static str {
+        let error_lower = error.to_lowercase();
+
+        // Permanent failures (dead)
+        if error_lower.contains("404") ||
+           error_lower.contains("410") ||
+           error_lower.contains("not found") ||
+           error_lower.contains("does not exist") ||
+           error_lower.contains("invalid") ||
+           error_lower.contains("malformed") {
+            return "dead";
+        }
+
+        // Temporary/network failures (unreachable)
+        if error_lower.contains("timeout") ||
+           error_lower.contains("connection refused") ||
+           error_lower.contains("connection reset") ||
+           error_lower.contains("tunnel") ||
+           error_lower.contains("peer") ||
+           error_lower.contains("network") {
+            return "unreachable";
+        }
+
+        // Default: treat as unreachable (safer, allows retry)
+        "unreachable"
+    }
 }
 
 #[derive(Debug, Clone)]

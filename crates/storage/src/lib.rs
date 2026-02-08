@@ -221,15 +221,23 @@ impl Storage {
         domain: &str,
         retry_count: u32,
         last_error: &str,
+        failure_type: &str, // "dead" or "unreachable"
     ) -> Result<()> {
         sqlx::query(
-            "INSERT INTO dead_urls (url, network, domain, retry_count, last_error) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (url) DO NOTHING",
+            "INSERT INTO dead_urls (url, network, domain, retry_count, last_error, failure_type, last_attempt_at)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW())
+             ON CONFLICT (url) DO UPDATE SET
+                retry_count = $4,
+                last_error = $5,
+                failure_type = $6,
+                last_attempt_at = NOW()",
         )
         .bind(url)
         .bind(network)
         .bind(domain)
         .bind(retry_count as i32)
         .bind(last_error)
+        .bind(failure_type)
         .execute(&self.pool)
         .await?;
         Ok(())
@@ -252,9 +260,12 @@ impl Storage {
         Ok(rows.into_iter().map(|(url,)| url).collect())
     }
 
-    /// Clear dead URLs for a specific network (e.g. after fixing a broken proxy).
+    /// Clear unreachable URLs for a specific network (for retry as network improves).
+    /// Only clears "unreachable" failures, not truly "dead" URLs.
     pub async fn clear_dead_urls_for_network(&self, network: &str) -> Result<u64> {
-        let result = sqlx::query("DELETE FROM dead_urls WHERE network = $1")
+        let result = sqlx::query(
+            "DELETE FROM dead_urls WHERE network = $1 AND failure_type = 'unreachable'"
+        )
             .bind(network)
             .execute(&self.pool)
             .await?;
@@ -277,6 +288,23 @@ impl Storage {
                 .fetch_all(&self.pool)
                 .await?;
         Ok(rows.into_iter().map(|(url,)| url).collect())
+    }
+
+    /// Get network health stats (dead vs unreachable counts per network)
+    pub async fn get_network_health_stats(&self) -> Result<Vec<(String, i64, i64, i64)>> {
+        let rows: Vec<(String, i64, i64, i64)> = sqlx::query_as(
+            "SELECT
+                network,
+                COUNT(*) FILTER (WHERE failure_type = 'dead') as dead_count,
+                COUNT(*) FILTER (WHERE failure_type = 'unreachable') as unreachable_count,
+                COUNT(*) as total_failed
+             FROM dead_urls
+             GROUP BY network
+             ORDER BY network"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows)
     }
 
     pub fn pool(&self) -> &PgPool {

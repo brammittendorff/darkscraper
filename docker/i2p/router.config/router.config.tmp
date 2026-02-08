@@ -1,20 +1,20 @@
 # WARNING: Do NOT copy this file from one router to another, this may cause serious problems.
 # NOTE: This I2P config file must use UTF-8 encoding
-# Last saved: Feb 8, 2026, 2:54 PM
+# Last saved: Feb 8, 2026, 7:15 PM
 i2np.lastCountry=nl
 i2np.lastIP=145.53.53.232
-i2np.lastIPChange=1770562399540
-i2np.ntcp2.iv=9GxgQlMI4c6Z0QZWFs-KPA==
-i2np.ntcp2.sp=P2WKGzdyNgEehgi93roEAaFxIDZT6luRvNlUg1qCsic=
-i2np.ssu2.ikey=kZRqcsldC3S-kHnEkkuNuDsJVGTW3wDTpexaHiPWwzk=
-i2np.ssu2.sp=ejQNHD9uPySd-08C1ra9WuykXDV2IV3sDeMDgTgM0EY=
-i2np.udp.internalPort=29005
-i2np.udp.port=29005
+i2np.lastIPChange=1770578083250
+i2np.ntcp2.iv=Kq8WrePm1Jb1VYT3PgosfQ==
+i2np.ntcp2.sp=kfL2A5gmfNfwrHVTJp1p0Rq51reWcThMwqu4ZA6Ix6k=
+i2np.ssu2.ikey=09kiW8uLEOyINOB9MMABPELMywCTE~bWLx1-6LfsYd0=
+i2np.ssu2.sp=Z2KndUHHort-W4XDpoUDmWPDhW0zQn5NFsI6z~ZmUOQ=
+i2np.udp.internalPort=15221
+i2np.udp.port=15221
 jbigi.lastProcessor=Ryzen/Epyc Zen 3 model 116/64
 jbigi.loadedResource=libjbigi-linux-zen2_64.so
-router.firstInstalled=1770562440123
+router.firstInstalled=1770578122003
 router.firstVersion=2.10.0
-router.inboundPool.randomKey=wgUW6iYz-LXApV2cKK28iJGLO41wiYPm1PlvbXX6hkc=
-router.outboundPool.randomKey=XB1ntIu2j33EGnRls7XWPKQN6fATo7wAsUyjeSpBcaA=
+router.inboundPool.randomKey=-xHizxrgV-d5244UuUp1rD55H59CCKPhNL4HIlqV0UQ=
+router.outboundPool.randomKey=6uvdp44YBdDbaSeLYcu26KJ4XRdeM1EpFrUJZcz4nBQ=
 router.previousVersion=2.10.0
-router.updateLastInstalled=1770562440123
+router.updateLastInstalled=1770578122003

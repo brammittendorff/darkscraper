@@ -1,19 +1,28 @@
 # DarkScraper
 
-High-performance dark web crawler and entity extractor designed for intelligence gathering across multiple anonymous networks.
+High-performance dark web crawler and OSINT platform designed for intelligence gathering across multiple anonymous networks.
 
 ## Overview
 
-DarkScraper is a Rust-based distributed crawler that navigates and indexes content from Tor, I2P, ZeroNet, Freenet, and Lokinet. It automatically extracts and catalogs entities such as email addresses, cryptocurrency wallets, phone numbers, PGP fingerprints, and usernames, storing everything in PostgreSQL for advanced search and analysis.
+DarkScraper is a Rust-based distributed crawler that navigates and indexes content from Tor, I2P, ZeroNet, Hyphanet (formerly Freenet), and Lokinet. It automatically extracts and catalogs entities such as email addresses, cryptocurrency wallets, phone numbers, PGP fingerprints, and usernames, storing everything in PostgreSQL for advanced search and analysis.
+
+**Key Innovation:** Intelligent prioritization system that automatically discovers and prioritizes cryptographic addresses (base32, base64, Bitcoin addresses) over human-readable aliases, enabling deeper infrastructure mapping and correlation analysis.
 
 ## Features
 
 - **Multi-Network Support**: Crawl across 5 anonymous networks simultaneously
-  - Tor (.onion)
-  - I2P (.i2p)
-  - ZeroNet
-  - Freenet
-  - Lokinet (.loki)
+  - **Tor** (.onion) - v3 onion addresses
+  - **I2P** (.i2p, .b32.i2p) - Java I2P with automatic base32 discovery
+  - **ZeroNet** (.bit) - Bitcoin-addressed sites
+  - **Hyphanet** (USK@/SSK@/CHK@) - Formerly Freenet
+  - **Lokinet** (.loki) - Oxen network
+
+- **Cryptographic Address Prioritization**:
+  - Automatically detects and prioritizes permanent cryptographic addresses
+  - Discovers I2P base32 addresses from human-readable names
+  - Maps Bitcoin addresses in ZeroNet
+  - Identifies 52-char Lokinet addresses vs ONS names
+  - Enables deep infrastructure correlation and tracking
 
 - **Entity Extraction**: Automatically identify and extract:
   - Email addresses
@@ -23,18 +32,27 @@ DarkScraper is a Rust-based distributed crawler that navigates and indexes conte
   - Phone numbers
   - PGP fingerprints
   - Usernames
-  - .onion and .i2p addresses
+  - .onion, .i2p, .b32.i2p, and .loki addresses
+
+- **Advanced Discovery**:
+  - Source mining (embedded URLs in JavaScript, comments, metadata)
+  - Form spidering (search forms, hidden inputs)
+  - Pattern mutation (URL structure analysis)
+  - Infrastructure probing (robots.txt, sitemap.xml, common paths)
+  - Correlation engine (favicon hashing, server fingerprinting)
 
 - **High Performance**:
   - Concurrent crawling with configurable worker pools
   - Multiple proxy instances per network for load distribution
+  - Priority queue with depth penalty and address type boosting
   - Bloom filter-based duplicate detection
   - Configurable depth and per-domain limits
 
 - **Data Management**:
   - PostgreSQL storage with full-text search
+  - Entity correlation and relationship mapping
   - Export to JSON
-  - Grafana dashboards for monitoring
+  - Grafana dashboards for real-time monitoring
   - Advanced search by entity type or full-text query
 
 ## Architecture
@@ -42,10 +60,10 @@ DarkScraper is a Rust-based distributed crawler that navigates and indexes conte
 The project is organized as a Rust workspace with the following crates:
 
 - **darkscraper-core**: Core types, configuration, and error handling
-- **darkscraper-networks**: Network-specific clients (Tor, I2P, ZeroNet, Freenet, Lokinet)
+- **darkscraper-networks**: Network-specific clients (Tor, I2P, ZeroNet, Hyphanet, Lokinet)
 - **darkscraper-parser**: HTML parsing and entity extraction
 - **darkscraper-storage**: PostgreSQL storage layer and migrations
-- **darkscraper-frontier**: URL frontier and duplicate detection
+- **darkscraper-frontier**: Priority queue, URL deduplication, and cryptographic address classification
 - **darkscraper-search**: Search functionality and indexing
 - **darkscraper-discovery**: Advanced discovery algorithms and metadata extraction
 
@@ -54,8 +72,8 @@ The project is organized as a Rust workspace with the following crates:
 ### Prerequisites
 
 - Docker and Docker Compose
-- At least 4GB RAM
-- 10GB free disk space
+- At least 8GB RAM (recommended 16GB)
+- 20GB free disk space (50GB+ for extended crawling)
 
 ### Basic Setup
 
@@ -72,15 +90,24 @@ docker compose up -d
 
 This launches:
 - PostgreSQL database
-- 3 Tor instances
-- 3 I2P instances
+- 3 Tor instances (SOCKS5 proxies)
+- 3 Java I2P instances (HTTP proxies + router console)
 - 3 ZeroNet instances
-- 3 Freenet instances
-- 3 Lokinet instances
+- 3 Hyphanet instances
+- 3 Lokinet instances (privileged mode for TUN interface)
 - Grafana dashboard (http://localhost:3000)
 - DarkScraper crawler
 
-3. Monitor progress:
+3. **Wait for I2P bootstrap** (10-15 minutes for first startup):
+```bash
+# Monitor I2P bootstrap progress
+./monitor_i2p.sh
+
+# Or check logs
+docker compose logs i2p1 -f
+```
+
+4. Monitor crawling progress:
 ```bash
 docker compose logs -f darkscraper
 ```
@@ -92,11 +119,53 @@ For higher throughput, launch additional network instances:
 ```bash
 # Launch with 5 instances of each network
 TOR_INSTANCES=5 I2P_INSTANCES=5 ZERONET_INSTANCES=5 \
-FREENET_INSTANCES=5 LOKINET_INSTANCES=5 \
+HYPHANET_INSTANCES=5 LOKINET_INSTANCES=5 \
 docker compose --profile tor-extra --profile i2p-extra \
-  --profile zeronet-extra --profile freenet-extra \
+  --profile zeronet-extra --profile hyphanet-extra \
   --profile lokinet-extra up -d
 ```
+
+## Network-Specific Information
+
+### Tor
+- **Bootstrap Time**: 30-60 seconds
+- **Proxy Type**: SOCKS5 on port 9050
+- **Address Format**: 56-character base32 `.onion` (v3 only)
+- **Status**: Always ready immediately
+
+### I2P (Java Router)
+- **Bootstrap Time**: 10-15 minutes (first start), 5-10 minutes (subsequent)
+- **Proxy Type**: HTTP on port 4444
+- **Address Formats**:
+  - Human-readable: `notbob.i2p` (addressbook)
+  - Cryptographic: `[52-56 chars].b32.i2p`
+- **Auto-Discovery**: Crawler automatically extracts base32 addresses from headers and HTML
+- **Router Console**: Port 7657 (not exposed by default)
+- **Status Check**: See `docker/i2p/README.md` and `QUICKSTART_I2P.md`
+
+### ZeroNet
+- **Bootstrap Time**: 30-60 seconds
+- **Proxy Type**: HTTP on port 43110
+- **Address Formats**:
+  - Cryptographic: Bitcoin addresses like `1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D.bit`
+  - Human-readable: Namecoin domains like `talk.bit`
+- **Status**: Ready quickly
+
+### Hyphanet (formerly Freenet)
+- **Bootstrap Time**: 2-3 minutes
+- **Proxy Type**: HTTP on port 8888 (FProxy)
+- **Address Formats**: `USK@`, `SSK@`, `CHK@` with base64-encoded keys
+- **Note**: All Hyphanet addresses are cryptographic (no human-readable aliases)
+- **Timeout**: 300 seconds (network is very slow)
+
+### Lokinet
+- **Bootstrap Time**: 1-2 minutes
+- **Proxy Type**: SOCKS5 on port 1080
+- **Address Formats**:
+  - Cryptographic: 52-character `.loki` addresses
+  - Human-readable: ONS names like `minecraft.loki`
+- **Requirements**: Privileged mode for TUN interface
+- **Status Check**: `dig @127.3.2.1 exit.loki`
 
 ## Configuration
 
@@ -112,6 +181,19 @@ max_body_size_mb = 10
 enabled = true
 max_concurrency = 32
 connect_timeout_seconds = 30
+request_timeout_seconds = 60
+
+[i2p]
+enabled = true
+max_concurrency = 8
+connect_timeout_seconds = 45
+request_timeout_seconds = 90  # I2P is slower
+
+[hyphanet]
+enabled = true
+max_concurrency = 8
+connect_timeout_seconds = 120
+request_timeout_seconds = 300  # Very slow network
 
 [extraction]
 extract_emails = true
@@ -129,13 +211,50 @@ Override configuration at runtime:
 | `TOR_WORKERS` | Concurrent Tor crawlers | 32 |
 | `I2P_WORKERS` | Concurrent I2P crawlers | 8 |
 | `ZERONET_WORKERS` | Concurrent ZeroNet crawlers | 8 |
-| `FREENET_WORKERS` | Concurrent Freenet crawlers | 8 |
+| `HYPHANET_WORKERS` | Concurrent Hyphanet crawlers | 8 |
 | `LOKINET_WORKERS` | Concurrent Lokinet crawlers | 8 |
 | `TOR_ENABLED` | Enable/disable Tor crawling | true |
 | `I2P_ENABLED` | Enable/disable I2P crawling | true |
 | `MAX_DEPTH` | Maximum crawl depth | 10 |
 | `TOR_INSTANCES` | Number of Tor proxies | 3 |
 | `I2P_INSTANCES` | Number of I2P proxies | 3 |
+
+## Cryptographic Address Prioritization
+
+DarkScraper automatically prioritizes URLs based on whether they use permanent cryptographic addresses or aliasable human-readable names:
+
+### Priority Tiers
+
+**Tier 1 (Priority 2.0)** - Cryptographic Addresses:
+- Tor: 56-char `.onion` v3 addresses
+- I2P: `.b32.i2p` addresses (52 or 56+ chars)
+- Hyphanet: `USK@`/`SSK@`/`CHK@` addresses
+- ZeroNet: Bitcoin address format `.bit`
+- Lokinet: 52-char `.loki` addresses
+
+**Tier 2 (Priority 1.0)** - Human-Readable Names:
+- I2P: Short `.i2p` addressbook names
+- ZeroNet: Namecoin `.bit` domains
+- Lokinet: ONS `.loki` names
+
+**Depth Penalty**: Priority divided by `(depth + 2)` to favor shallow URLs
+
+### Why This Matters for OSINT
+
+Cryptographic addresses are prioritized because they:
+1. **Cannot be hijacked or changed** - Permanent identifiers
+2. **Represent real infrastructure** - Actual cryptographic endpoints
+3. **Enable correlation** - Track same infrastructure across networks
+4. **Discover hidden sites** - Not in public addressbooks
+5. **Map relationships** - See true connections between services
+
+### Automatic Base32 Discovery (I2P)
+
+When crawling human-readable I2P sites like `notbob.i2p`, DarkScraper automatically:
+1. Checks HTTP headers for `X-I2P-DestB32`
+2. Scans HTML for base32 addresses
+3. Adds discovered `[hash].b32.i2p` URLs to queue with high priority
+4. Builds mapping between names and cryptographic addresses
 
 ## Usage
 
@@ -192,8 +311,10 @@ Access the Grafana dashboard at http://localhost:3000:
 Dashboards display:
 - Crawl rate per network
 - Entity extraction counts
+- Pages and links discovered
 - Database size and query performance
 - Error rates and timeouts
+- Network-specific metrics (I2P peers, Tor circuits, etc.)
 
 ## Development
 
@@ -219,6 +340,19 @@ cargo build --release
 cargo test --workspace
 ```
 
+### Database Migrations
+
+Migrations are in `crates/storage/migrations/`. They run automatically on startup.
+
+To manually reset the database:
+```bash
+# Drop and recreate
+docker compose exec postgres psql -U crawler -d darkscraper -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+
+# Restart crawler (runs migrations)
+docker compose restart darkscraper
+```
+
 ### Project Structure
 
 ```
@@ -226,19 +360,30 @@ darkscraper/
 ├── src/                    # Main binary
 │   ├── main.rs
 │   ├── cli.rs
-│   ├── crawl.rs
-│   └── commands.rs
+│   ├── crawl.rs            # Main crawler logic
+│   ├── commands.rs
+│   └── seeds.rs            # Default seed URLs
 ├── crates/                 # Workspace crates
 │   ├── core/              # Core types & config
-│   ├── networks/          # Network clients
+│   ├── networks/          # Network clients (Tor, I2P, etc.)
 │   ├── parser/            # HTML & entity extraction
-│   ├── storage/           # Database layer
-│   ├── frontier/          # URL queue & deduplication
+│   ├── storage/           # Database layer + migrations
+│   ├── frontier/          # Priority queue & address classification
 │   ├── search/            # Search engine
 │   └── discovery/         # Discovery algorithms
 ├── config/                # Configuration files
+│   ├── default.toml       # Main config
+│   └── i2pd.conf          # (legacy, not used)
 ├── docker/                # Dockerfiles for networks
+│   ├── i2p/              # Java I2P (geti2p/i2p)
+│   ├── hyphanet/         # Hyphanet (formerly freenet)
+│   ├── zeronet/          # ZeroNet
+│   └── lokinet-socks/    # Lokinet with SOCKS proxy
 ├── grafana/               # Grafana dashboards
+│   ├── provisioning/     # Auto-provisioning
+│   └── dashboards/       # Network-specific dashboards
+├── monitor_i2p.sh         # I2P monitoring script
+├── QUICKSTART_I2P.md      # I2P setup guide
 └── docker-compose.yml
 ```
 
@@ -251,7 +396,7 @@ Adjust worker counts based on your hardware:
 ```bash
 # High-performance setup (16+ cores, 16GB+ RAM)
 TOR_WORKERS=64 I2P_WORKERS=16 ZERONET_WORKERS=16 \
-FREENET_WORKERS=16 LOKINET_WORKERS=16 \
+HYPHANET_WORKERS=16 LOKINET_WORKERS=16 \
 docker compose up -d
 ```
 
@@ -259,15 +404,16 @@ docker compose up -d
 
 - **Tor**: High concurrency works well (32-64 workers)
 - **I2P**: Lower concurrency recommended (8-16 workers) due to network latency
-- **ZeroNet/Freenet/Lokinet**: Moderate concurrency (8-16 workers)
+- **Hyphanet**: Very low concurrency (4-8 workers) - extremely slow network
+- **ZeroNet/Lokinet**: Moderate concurrency (8-16 workers)
 
 ### Resource Requirements
 
-| Setup | CPU Cores | RAM | Storage |
-|-------|-----------|-----|---------|
-| Minimal (3 instances) | 4 | 4GB | 10GB |
-| Standard (5 instances) | 8 | 8GB | 50GB |
-| High-performance (5 instances) | 16+ | 16GB+ | 100GB+ |
+| Setup | CPU Cores | RAM | Storage | I2P Bootstrap |
+|-------|-----------|-----|---------|---------------|
+| Minimal (3 instances) | 4 | 8GB | 20GB | 15 min |
+| Standard (5 instances) | 8 | 16GB | 50GB | 15 min |
+| High-performance (5 instances) | 16+ | 32GB+ | 100GB+ | 15 min |
 
 ## Security & Legal Considerations
 
@@ -276,6 +422,7 @@ docker compose up -d
 - OSINT investigations
 - Academic research
 - Authorized penetration testing
+- Intelligence gathering (with proper authorization)
 
 Users are responsible for:
 - Complying with local laws and regulations
@@ -283,23 +430,49 @@ Users are responsible for:
 - Respecting robots.txt and website policies
 - Protecting collected data appropriately
 - Not accessing illegal content
+- Following ethical OSINT practices
 
 The authors assume no liability for misuse of this software.
 
 ## Troubleshooting
 
-### I2P Won't Connect
+### I2P Won't Connect / Slow Bootstrap
 
-I2P can take 5-10 minutes to bootstrap. Check logs:
+**I2P (Java Router) takes 10-15 minutes** for initial bootstrap on first run. This is normal!
+
+**Expected timeline:**
+- 0-5 min: Reseed (downloading network database)
+- 5-10 min: Peer discovery (connecting to initial peers)
+- 10-15 min: Tunnel building (HTTP proxy becomes functional)
+- 15-30 min: Full network integration
+
+**Check status:**
 ```bash
-docker compose logs i2p1
+# Monitor bootstrap
+./monitor_i2p.sh
+
+# Check logs
+docker compose logs i2p1 --tail=50
+
+# Verify proxy is listening
+docker compose exec i2p1 netstat -tuln | grep 4444
 ```
+
+**Common issues:**
+- ❌ "Warning - No client apps configured" → Fixed by using official Java I2P
+- ⏳ "Firewalled" status → Normal for Docker, doesn't prevent crawling
+- 🐌 Slow crawling → Wait for full bootstrap (15+ minutes)
+
+See `docker/i2p/README.md` and `QUICKSTART_I2P.md` for detailed I2P setup.
 
 ### Lokinet Failing to Start
 
 Lokinet requires privileged mode. Ensure Docker has the necessary permissions:
 ```bash
 docker compose logs lokinet1
+
+# Check if TUN interface is created
+docker compose exec lokinet1 ip addr show tun0
 ```
 
 ### Database Connection Errors
@@ -307,11 +480,51 @@ docker compose logs lokinet1
 Wait for PostgreSQL to be ready:
 ```bash
 docker compose logs postgres
+
+# Check if migrations ran
+docker compose logs darkscraper | grep migration
+```
+
+### "Column does not exist" Errors
+
+Schema mismatch. Reset the database:
+```bash
+docker compose stop darkscraper
+docker compose exec postgres psql -U crawler -d darkscraper -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+docker compose up -d darkscraper
 ```
 
 ### Out of Memory
 
-Reduce worker counts or increase Docker memory limits in Docker Desktop settings.
+Reduce worker counts or increase Docker memory limits:
+```bash
+# Reduce workers
+TOR_WORKERS=16 I2P_WORKERS=4 docker compose up -d
+
+# Or increase Docker memory in Docker Desktop settings (8GB+ recommended)
+```
+
+### No Links in Grafana
+
+Check for database errors:
+```bash
+docker compose logs darkscraper | grep ERROR
+
+# Verify links table
+docker compose exec postgres psql -U crawler -d darkscraper -c "SELECT COUNT(*) FROM links;"
+```
+
+## Default Seeds
+
+DarkScraper includes 79 high-quality seed URLs across all networks:
+
+- **11 Tor seeds**: Hidden wikis, directories, search engines
+- **27 I2P seeds**: notbob.i2p, identiguy.i2p, forums, directories
+- **23 ZeroNet seeds**: ZeroHello, site indexes, community hubs
+- **14 Hyphanet seeds**: USK indexes, wikis (updated regularly)
+- **4 Lokinet seeds**: Block explorers, wikis
+
+Seeds are in `src/seeds.rs` and optimized for maximum link discovery.
 
 ## Contributing
 
@@ -323,6 +536,13 @@ Contributions are welcome! Please:
 4. Ensure `cargo test` passes
 5. Submit a pull request
 
+**Priority areas:**
+- Additional network support (GNUnet, Invisible Internet Project)
+- Enhanced entity extraction (new cryptocurrency formats)
+- Machine learning for content classification
+- Advanced correlation algorithms
+- Performance optimizations
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
@@ -333,9 +553,16 @@ Built with:
 - [Tokio](https://tokio.rs/) - Async runtime
 - [reqwest](https://github.com/seanmonstar/reqwest) - HTTP client
 - [scraper](https://github.com/causal-agent/scraper) - HTML parsing
+- [sqlx](https://github.com/launchbadge/sqlx) - PostgreSQL client
 - [PostgreSQL](https://www.postgresql.org/) - Database
 - [Grafana](https://grafana.com/) - Monitoring
+
+Special thanks to the anonymous network communities: Tor Project, I2P (geti2p.net), ZeroNet, Hyphanet (hyphanet.org), and Oxen (Lokinet).
 
 ## Contact
 
 For questions or support, please open an issue on GitHub.
+
+---
+
+**⚠️ Reminder**: Always use this tool responsibly and ethically. OSINT work requires respect for privacy, adherence to laws, and proper authorization.

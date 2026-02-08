@@ -118,6 +118,17 @@ fn extract_links(document: &Html, base_url: &Url, base_domain: &str) -> Vec<Extr
         .select(&sel)
         .filter_map(|el| {
             let href = el.value().attr("href")?;
+
+            // Skip non-crawlable URL schemes
+            if href.starts_with("javascript:") ||
+               href.starts_with("mailto:") ||
+               href.starts_with("tel:") ||
+               href.starts_with("data:") ||
+               href.starts_with("#") ||
+               href == "/" {
+                return None;
+            }
+
             let resolved = base_url.join(href).ok()?;
             let host = resolved.host_str().unwrap_or("");
 

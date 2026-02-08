@@ -11,9 +11,9 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Clone ZeroNet from official repo
-RUN git clone https://github.com/HelloZeroNet/ZeroNet.git . \
-    && git checkout py3
+# Clone ZeroNet from maintained conservancy fork (original is abandoned)
+RUN git clone https://github.com/zeronet-conservancy/zeronet-conservancy.git . \
+    && git checkout master
 
 # Install ALL Python dependencies manually
 RUN pip install --no-cache-dir \

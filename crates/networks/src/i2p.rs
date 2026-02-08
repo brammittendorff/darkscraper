@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
+use regex::Regex;
 use tracing::{debug, warn};
 use url::Url;
 
@@ -16,6 +17,34 @@ pub struct I2pDriver {
 }
 
 impl I2pDriver {
+    /// Extract I2P base32 cryptographic address from HTTP response
+    /// Checks headers (X-I2P-DestB32) and HTML content for .b32.i2p addresses
+    /// Returns the full b32.i2p URL if found
+    pub fn extract_base32_address(
+        headers: &HashMap<String, String>,
+        body: &str,
+        _base_url: &Url,
+    ) -> Option<String> {
+        // Check X-I2P-DestB32 or X-I2P-Dest-B32 header
+        if let Some(dest_b32) = headers.get("x-i2p-destb32").or_else(|| headers.get("x-i2p-dest-b32")) {
+            if dest_b32.len() >= 52 && dest_b32.contains(".b32.i2p") {
+                return Some(format!("http://{}/", dest_b32.trim()));
+            }
+        }
+
+        // Look for base32 addresses in the HTML content
+        // Pattern: [52-56 base32 chars].b32.i2p
+        if let Ok(re) = Regex::new(r"([a-z2-7]{52,56})\.b32\.i2p") {
+            if let Some(caps) = re.captures(body) {
+                if let Some(b32_addr) = caps.get(0) {
+                    return Some(format!("http://{}/", b32_addr.as_str()));
+                }
+            }
+        }
+
+        None
+    }
+
     pub fn new(
         proxy_addrs: &[String],
         max_concurrency: usize,
@@ -124,5 +153,36 @@ impl NetworkDriver for I2pDriver {
 
     fn default_delay(&self) -> Duration {
         self.min_delay
+    }
+
+    fn retry_policy(&self) -> (bool, u64) {
+        // I2P is a P2P network that needs time to integrate peers
+        // Clear dead URLs on startup and retry every hour as network improves
+        (true, 3600) // clear_on_startup=true, retry_every=1 hour
+    }
+
+    fn classify_error(&self, error: &str) -> &'static str {
+        let error_lower = error.to_lowercase();
+
+        // I2P-specific permanent failures (dead)
+        if error_lower.contains("404") ||
+           error_lower.contains("not found") ||
+           error_lower.contains("invalid destination") ||
+           error_lower.contains("bad hostname") {
+            return "dead";
+        }
+
+        // I2P-specific temporary failures (unreachable - P2P network issues)
+        // Most I2P errors are network-related: insufficient peers, tunnels building, etc.
+        if error_lower.contains("error sending request") ||
+           error_lower.contains("timeout") ||
+           error_lower.contains("connection") ||
+           error_lower.contains("tunnel") ||
+           error_lower.contains("peer") {
+            return "unreachable"; // Retry later when network has more peers
+        }
+
+        // Default: unreachable (P2P network, assume temporary)
+        "unreachable"
     }
 }

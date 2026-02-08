@@ -182,4 +182,46 @@ impl NetworkDriver for HyphanetDriver {
     fn default_delay(&self) -> Duration {
         self.min_delay
     }
+
+    fn retry_policy(&self) -> (bool, u64) {
+        // Hyphanet is extremely slow and can have transient failures
+        // Keys are permanent but may take multiple attempts to fetch
+        // Retry periodically as network conditions improve
+        (false, 10800) // no startup clear, retry every 3 hours
+    }
+
+    fn max_retries(&self) -> u32 {
+        // Hyphanet needs many more retries due to:
+        // - Extremely slow routing (minutes per request)
+        // - High failure rate for initial attempts
+        // - Network warming up over time
+        // - Keys often exist but take time to fetch
+        12 // 12 retries * 30s timeout = ~6 minutes total attempt time
+    }
+
+    fn classify_error(&self, error: &str) -> &'static str {
+        let error_lower = error.to_lowercase();
+
+        // Hyphanet-specific permanent failures (dead)
+        if error_lower.contains("invalid key") ||
+           error_lower.contains("malformed") ||
+           error_lower.contains("bad key") ||
+           error_lower.contains("404") {
+            return "dead"; // Key is malformed or truly doesn't exist
+        }
+
+        // Hyphanet-specific temporary failures (unreachable)
+        // These often succeed on retry as network conditions improve
+        if error_lower.contains("route not found") ||
+           error_lower.contains("data not found") ||
+           error_lower.contains("recently failed") ||
+           error_lower.contains("timeout") ||
+           error_lower.contains("connection") ||
+           error_lower.contains("fproxy error") {
+            return "unreachable"; // Network routing issue, retry later
+        }
+
+        // Default: unreachable (Hyphanet is flaky, assume temporary)
+        "unreachable"
+    }
 }

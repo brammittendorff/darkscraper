@@ -128,4 +128,33 @@ impl NetworkDriver for TorDriver {
     fn default_delay(&self) -> Duration {
         self.min_delay
     }
+
+    fn retry_policy(&self) -> (bool, u64) {
+        // Tor is stable and reliable, no need to retry dead URLs
+        // Sites that are down are usually permanently down
+        (false, 0) // no automatic retries
+    }
+
+    fn classify_error(&self, error: &str) -> &'static str {
+        let error_lower = error.to_lowercase();
+
+        // Tor-specific permanent failures (dead)
+        if error_lower.contains("404") ||
+           error_lower.contains("410") ||
+           error_lower.contains("not found") ||
+           error_lower.contains("client error (connect)") || // Onion service offline/gone
+           error_lower.contains("invalid onion") {
+            return "dead"; // Onion service doesn't exist or is permanently offline
+        }
+
+        // Tor-specific temporary failures (unreachable)
+        if error_lower.contains("timeout") ||
+           error_lower.contains("circuit") ||
+           error_lower.contains("sendrequest") {
+            return "unreachable"; // Tor circuit issues, retry possible
+        }
+
+        // Default: dead (Tor is stable, failures are usually permanent)
+        "dead"
+    }
 }

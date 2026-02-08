@@ -142,4 +142,35 @@ impl NetworkDriver for ZeronetDriver {
     fn default_delay(&self) -> Duration {
         self.min_delay
     }
+
+    fn retry_policy(&self) -> (bool, u64) {
+        // ZeroNet is P2P but generally stable
+        // Sites can be temporarily unavailable if peers are offline
+        // Retry periodically to catch sites coming back online
+        (false, 7200) // no startup clear, retry every 2 hours
+    }
+
+    fn classify_error(&self, error: &str) -> &'static str {
+        let error_lower = error.to_lowercase();
+
+        // ZeroNet-specific permanent failures (dead)
+        if error_lower.contains("404") ||
+           error_lower.contains("not found") ||
+           error_lower.contains("invalid address") ||
+           error_lower.contains("site not found") {
+            return "dead"; // Site truly doesn't exist
+        }
+
+        // ZeroNet-specific temporary failures (unreachable)
+        // P2P network: peers might be offline but site exists
+        if error_lower.contains("timeout") ||
+           error_lower.contains("no peers") ||
+           error_lower.contains("connection") ||
+           error_lower.contains("error sending request") {
+            return "unreachable"; // Peers offline, retry later
+        }
+
+        // Default: unreachable (P2P network, assume temporary)
+        "unreachable"
+    }
 }

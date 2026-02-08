@@ -25,33 +25,7 @@ pub struct CrawlResult {
     correlations: Vec<Correlation>,
 }
 
-/// Maximum retries for failed fetches before giving up on a URL.
-pub const MAX_FETCH_RETRIES: u32 = 4;
-pub const MAX_FETCH_RETRIES_HYPHANET: u32 = 12; // hyphanet needs much longer: 12 retries * 30s = ~6 min
-
-/// Maximum pages to crawl per domain before deprioritizing
-pub const MAX_PAGES_PER_DOMAIN: usize = 100;
-
-/// Extract I2P base32 address from HTTP headers (X-I2P-Dest-B32) or response body.
-/// Returns the full b32.i2p URL if found.
-fn extract_i2p_base32(headers: &std::collections::HashMap<String, String>, body: &str, base_url: &url::Url) -> Option<String> {
-    // Check X-I2P-DestB32 or X-I2P-Dest-B32 header
-    if let Some(dest_b32) = headers.get("x-i2p-destb32").or_else(|| headers.get("x-i2p-dest-b32")) {
-        if dest_b32.len() >= 52 && dest_b32.contains(".b32.i2p") {
-            return Some(format!("http://{}/", dest_b32.trim()));
-        }
-    }
-
-    // Look for base32 addresses in the HTML content
-    // Pattern: [52+ base32 chars].b32.i2p
-    let re = regex::Regex::new(r"([a-z2-7]{52,56})\.b32\.i2p").ok()?;
-    if let Some(caps) = re.captures(body) {
-        let b32_addr = caps.get(0)?.as_str();
-        return Some(format!("http://{}/", b32_addr));
-    }
-
-    None
-}
+// MAX_PAGES_PER_DOMAIN removed - now defined per-network in NetworkDriver trait
 
 /// Create a CrawlJob from a discovered URL string, or None if it can't be handled.
 /// Only accepts http/https URLs with v3 .onion, .i2p, or .bit hosts.
@@ -148,15 +122,6 @@ pub async fn run_crawl(
     let pool_size = ((total_workers as u32) + 5).max(10);
     let storage = Storage::with_pool_size(&config.database.postgres_url, pool_size).await?;
     storage.run_migrations().await?;
-
-    // Clear dead lokinet URLs from previous broken runs so they get re-crawled
-    let cleared = storage
-        .clear_dead_urls_for_network("lokinet")
-        .await
-        .unwrap_or(0);
-    if cleared > 0 {
-        info!(cleared, "cleared dead lokinet URLs from previous sessions");
-    }
 
     // --- Frontier with fresh bloom filter each session ---
     // Bloom starts empty: within-session dedup only, allowing cross-session
@@ -311,7 +276,8 @@ pub async fn run_crawl(
     };
 
     // Pipeline channels
-    let (result_tx, mut result_rx) = mpsc::channel::<CrawlResult>(2000);
+    // Large channel buffer to prevent blocking (64 workers * 100 = 6400 headroom)
+    let (result_tx, mut result_rx) = mpsc::channel::<CrawlResult>(10000);
     let (shutdown_tx, _shutdown_rx) = tokio::sync::broadcast::channel::<()>(1);
 
     // Track which domains we've already probed for infrastructure
@@ -319,6 +285,25 @@ pub async fn run_crawl(
 
     // Track pages crawled per domain to prevent one domain from monopolizing the queue
     let domain_page_count: Arc<DashMap<String, AtomicUsize>> = Arc::new(DashMap::new());
+
+    // Apply network-specific retry policies (clear dead URLs on startup if requested)
+    for driver in drivers.iter() {
+        let (clear_on_startup, _) = driver.retry_policy();
+        if clear_on_startup {
+            let network_name = driver.name();
+            match storage.clear_dead_urls_for_network(network_name).await {
+                Ok(cleared) if cleared > 0 => {
+                    info!(
+                        network = network_name,
+                        cleared,
+                        "cleared dead URLs on startup per network retry policy"
+                    );
+                }
+                Ok(_) => {}
+                Err(e) => error!(network = network_name, "failed to clear dead URLs: {}", e),
+            }
+        }
+    }
 
     // Dead URLs — permanently failed after max retries, never re-crawled.
     // Loaded from DB at startup so they persist across restarts.
@@ -337,6 +322,7 @@ pub async fn run_crawl(
     let storage_handle = {
         let storage = Arc::clone(&storage);
         let mut shutdown = shutdown_tx.subscribe();
+        let result_tx_monitor = result_tx.clone();
         tokio::spawn(async move {
             let mut pages_stored = 0u64;
             let mut last_store_time = std::time::Instant::now();
@@ -348,6 +334,17 @@ pub async fn run_crawl(
                             Ok(id) => {
                                 pages_stored += 1;
                                 last_store_time = std::time::Instant::now();
+
+                                // Warn if channel is getting full (potential deadlock risk)
+                                let capacity = result_tx_monitor.capacity();
+                                if capacity < 1000 {
+                                    warn!(
+                                        capacity,
+                                        pages_stored,
+                                        "storage channel low capacity - DB may be slow"
+                                    );
+                                }
+
                                 info!(page_id = id, url = %result.page.url, total = pages_stored, "stored page");
                             }
                             Err(e) => error!(url = %result.page.url, "store failed: {}", e),
@@ -386,6 +383,48 @@ pub async fn run_crawl(
             }
         })
     };
+
+    // Spawn periodic retry tasks for networks that request them
+    // Each network can define its own retry interval via retry_policy()
+    let mut retry_handles = Vec::new();
+    for driver in drivers.iter() {
+        let (_, retry_interval) = driver.retry_policy();
+        if retry_interval > 0 {
+            let network_name = driver.name().to_string();
+            let storage = Arc::clone(&storage);
+            let mut shutdown = shutdown_tx.subscribe();
+
+            let handle = tokio::spawn(async move {
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(retry_interval));
+                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+                loop {
+                    tokio::select! {
+                        _ = interval.tick() => {
+                            match storage.clear_dead_urls_for_network(&network_name).await {
+                                Ok(cleared) if cleared > 0 => {
+                                    info!(
+                                        network = network_name,
+                                        cleared,
+                                        interval_hours = retry_interval / 3600,
+                                        "cleared dead URLs for periodic retry"
+                                    );
+                                }
+                                Ok(_) => {}
+                                Err(e) => error!(network = network_name, "failed to clear dead URLs: {}", e),
+                            }
+                        }
+                        _ = shutdown.recv() => {
+                            info!(network = network_name, "retry task shutting down");
+                            break;
+                        }
+                    }
+                }
+            });
+
+            retry_handles.push(handle);
+        }
+    }
 
     // Spawn parallel crawl workers
     info!(
@@ -549,11 +588,7 @@ pub async fn run_crawl(
                             Ok(r) => r,
                             Err(e) => {
                                 let retries = job.retry_count;
-                                let max_retries = if job.network == "hyphanet" {
-                                    MAX_FETCH_RETRIES_HYPHANET
-                                } else {
-                                    MAX_FETCH_RETRIES
-                                };
+                                let max_retries = driver.max_retries();
                                 if retries < max_retries {
                                     warn!(worker_id, url = %url, retry = retries, "fetch failed, will retry: {}", e);
                                     let retry_job = CrawlJob {
@@ -567,10 +602,19 @@ pub async fn run_crawl(
                                     let err_msg = e.to_string();
                                     let domain = url.host_str().unwrap_or("unknown");
                                     let network = &job.network;
-                                    warn!(worker_id, url = %url, retries, network, "fetch failed permanently, marking dead: {}", err_msg);
+                                    let failure_type = driver.classify_error(&err_msg);
+                                    warn!(
+                                        worker_id,
+                                        url = %url,
+                                        retries,
+                                        network,
+                                        failure_type,
+                                        "fetch failed permanently: {}",
+                                        err_msg
+                                    );
                                     dead.insert(url.to_string());
                                     let _ = crawl_storage.mark_dead(
-                                        url.as_str(), network, domain, retries, &err_msg
+                                        url.as_str(), network, domain, retries, &err_msg, failure_type
                                     ).await;
                                 }
                                 return;
@@ -635,10 +679,25 @@ pub async fn run_crawl(
                             }
                         };
 
-                        // Increment domain page counter
-                        domain_counts.entry(domain.clone())
+                        // Increment domain page counter and check network-specific limit
+                        let domain_page_count = domain_counts.entry(domain.clone())
                             .or_insert_with(|| AtomicUsize::new(0))
                             .fetch_add(1, Ordering::Relaxed);
+
+                        // Hard stop: Skip domains that exceeded the network's limit
+                        let max_pages = driver.max_pages_per_domain();
+                        if domain_page_count >= max_pages {
+                            warn!(
+                                worker_id,
+                                url = %url,
+                                domain = %domain,
+                                count = domain_page_count,
+                                max = max_pages,
+                                network = %job.network,
+                                "domain exceeded page limit, skipping"
+                            );
+                            return;
+                        }
 
                         // ============ DISCOVERY MODULES ============
 
@@ -658,8 +717,9 @@ pub async fn run_crawl(
                         }
 
                         // 2.5. Extract I2P base32 address (if visiting human-readable .i2p)
+                        // This is I2P-specific but called here because we need the response
                         if url.host_str().map(|h| h.ends_with(".i2p") && !h.ends_with(".b32.i2p")).unwrap_or(false) {
-                            if let Some(b32_url) = extract_i2p_base32(&resp.headers, &raw_html, &url) {
+                            if let Some(b32_url) = I2pDriver::extract_base32_address(&resp.headers, &raw_html, &url) {
                                 info!(worker_id, url = %url, b32 = %b32_url, "discovered I2P base32 address");
                                 discovered_urls.push(b32_url);
                             }
@@ -729,11 +789,15 @@ pub async fn run_crawl(
                                         if !probed_set.contains(link_domain) {
                                             job.priority *= 1000.0;
                                         }
-                                        // MASSIVE penalty for domains exceeding page limit
+                                        // Penalty for domains approaching page limit
+                                        // (Hard stop enforced during fetch, this just deprioritizes)
                                         if let Some(count_entry) = domain_counts.get(link_domain) {
                                             let page_count = count_entry.load(Ordering::Relaxed);
-                                            if page_count > MAX_PAGES_PER_DOMAIN {
-                                                job.priority *= 0.001; // 1000x penalty
+                                            // Get the limit from the driver that can handle this URL
+                                            if let Some(d) = drivers.iter().find(|d| d.can_handle(&job.url)) {
+                                                if page_count > d.max_pages_per_domain() / 2 {
+                                                    job.priority *= 0.1; // 10x penalty when > 50% of limit
+                                                }
                                             }
                                         }
                                     }
@@ -749,10 +813,18 @@ pub async fn run_crawl(
                             }
                         }
 
-                        // Send to storage
+                        // Send to storage with timeout to prevent deadlock
                         let result = CrawlResult { page, correlations };
-                        if result_tx.send(result).await.is_err() {
-                            error!(worker_id, "result channel closed");
+                        match tokio::time::timeout(
+                            std::time::Duration::from_secs(30),
+                            result_tx.send(result)
+                        ).await {
+                            Ok(Ok(_)) => {},
+                            Ok(Err(_)) => error!(worker_id, "result channel closed"),
+                            Err(_) => {
+                                warn!(worker_id, url = %url, "storage channel full for 30s, dropping result to prevent deadlock");
+                                // Drop result to prevent deadlock - workers must keep processing
+                            }
                         }
                     } => {}
                 }
