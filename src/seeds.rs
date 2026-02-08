@@ -79,9 +79,14 @@ pub const ZERONET_SEEDS: &[&str] = &[
 
 // Freenet/Hyphanet freesite seeds
 pub const FREENET_SEEDS: &[&str] = &[
+    // Indexes and search engines (most important for discovery)
+    "freenet:USK@5ijbfKSJ4kPZTRDzq363CHteEUiSZjrO-E36vbHvnIU,ZEZqPXeuYiyokY2r0wkhJr5cy7KBH9omkuWDqSC6PLs,AQACAAE/clean-spider/37/",
+    "freenet:USK@XJZAi25dd5y7lrxE3cHMmM-xZ-c-hlPpKLYeLC0YG5I,8XTbR1bd9RBXlX6j-OZNednsJ8Cl6EAeBBebC3jtMFU,AQACAAE/search/0/",
+    "freenet:USK@US6gHsNApDvyShI~sBHGEOplJ3pwZUDhLqTAas6rO4c,3jeU5OwV0-K4B6HRBznDYGvpu2PRUuwL0V110rn-~8g,AQACAAE/freenet-index/5/",
+    "freenet:USK@bt6o0REPxC8USh5IM1wg65p1DG-h8pqlZQFsdrkG6HU,1-YF9KPJiEPhktMFkfWZDYDSh2sWvqHm1bWbdloltP4,AQACAAE/mywiki/0/",
+    // Original seeds
     "freenet:USK@QRZAI1nSm~dAY2hTgiW1-C7P3CEGV9tqKaSOSmLiDMI,DcnBm6MV9zPKaT3MHRmBisfzI8tDhjVBNyjaHIJx5Oo,AQACAAE/activelink-index/0/",
     "freenet:USK@pXTEkrmFi9FIhv3EAf8p4MRPKHmn4U-Y2LUsPfEvbdg,SDnSl03Gbl1r1oKz6fy4qj35gEIieGS3lYq8K5MFb5Q,AQACAAE/index/0/",
-    "freenet:USK@5ijbfKSJ4kPZTRDzq363CHteEUiSZjrO-E36vbHvnIU,ZEZqPXeuYiyokY2r0wkhJr5cy7KBH9omkuWDqSC6PLs,AQACAAE/clean-spider/37/",
 ];
 
 // Lokinet SNApp seeds

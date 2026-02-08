@@ -403,26 +403,28 @@ pub async fn run_crawl(
         let worker_network = worker_network.to_string();
 
         let handle = tokio::spawn(async move {
-            // Startup probe: wait until our network proxy is reachable
-            // I2P especially takes 5-10 minutes to build tunnels, Freenet 10-20 minutes
+            // Startup probe: wait UNTIL network proxy is actually ready
+            // Don't start crawling until the network can handle requests
             if worker_network != "tor" {
-                info!(worker_id, network = %worker_network, "waiting for network proxy to become reachable...");
-                // Freenet needs much longer - up to 20 minutes to bootstrap
-                let max_probe_retries = if worker_network == "freenet" {
-                    80u32
-                } else {
-                    40u32
-                };
+                info!(worker_id, network = %worker_network, "waiting for network to be ready...");
+
+                // Freenet and I2P need HTTP probe to verify they're actually ready with peers/tunnels
+                // ZeroNet and Lokinet just need TCP port check
+                let needs_http_probe = worker_network == "freenet" || worker_network == "i2p";
+
                 let mut probe_attempts = 0u32;
-
-                // Freenet needs HTTP probe to verify it's actually ready, not just TCP port open
-                let needs_http_probe = worker_network == "freenet";
-
                 loop {
                     let is_ready = if needs_http_probe {
-                        // HTTP probe for Freenet - check it's actually connected, not just showing setup page
-                        let probe_url = std::env::var("FREENET_PROXY")
-                            .unwrap_or_else(|_| "freenet1:8888".to_string());
+                        // HTTP probe for Freenet/I2P - check it's actually ready, not just port open
+                        let probe_url = match worker_network.as_str() {
+                            "freenet" => std::env::var("FREENET_PROXY")
+                                .unwrap_or_else(|_| "freenet1:8888".to_string()),
+                            "i2p" => std::env::var("I2P_PROXY")
+                                .unwrap_or_else(|_| "i2p1:4444".to_string()),
+                            _ => unreachable!(),
+                        };
+
+                        // Try to fetch a test page and check response
                         match reqwest::Client::builder()
                             .timeout(std::time::Duration::from_secs(10))
                             .build()
@@ -445,17 +447,22 @@ pub async fn run_crawl(
                                 })
                             }) {
                             Some(text) => {
-                                // Freenet is ready only if it's NOT showing the setup wizard
-                                !text.contains("Set Up Freenet")
-                                    && !text.contains("First Time Wizard")
+                                if worker_network == "freenet" {
+                                    // Freenet is ready when NOT showing setup wizard
+                                    !text.contains("Set Up Freenet")
+                                        && !text.contains("First Time Wizard")
+                                } else {
+                                    // I2P is ready when NOT showing proxy errors (means tunnels are built)
+                                    !text.contains("Proxy error")
+                                        && !text.contains("Can't create connection")
+                                        && !text.contains("Host is down")
+                                }
                             }
                             None => false,
                         }
                     } else {
-                        // TCP probe for I2P, ZeroNet, Lokinet
+                        // TCP probe for ZeroNet, Lokinet
                         let probe_addr = match worker_network.as_str() {
-                            "i2p" => std::env::var("I2P_PROXY")
-                                .unwrap_or_else(|_| "i2p1:4444".to_string()),
                             "zeronet" => std::env::var("ZERONET_PROXY")
                                 .unwrap_or_else(|_| "zeronet1:43110".to_string()),
                             "lokinet" => std::env::var("LOKINET_PROXY")
@@ -466,15 +473,15 @@ pub async fn run_crawl(
                     };
 
                     if is_ready {
-                        info!(worker_id, network = %worker_network, "network proxy is reachable");
+                        info!(worker_id, network = %worker_network, "network is ready");
                         break;
                     } else {
                         probe_attempts += 1;
-                        if probe_attempts >= max_probe_retries {
-                            warn!(worker_id, network = %worker_network, "proxy unreachable after {} attempts, worker will skip", probe_attempts);
-                            return; // exit worker — this network is down
+                        if probe_attempts % 10 == 1 {
+                            info!(worker_id, network = %worker_network, attempts = probe_attempts, "still waiting for network...");
                         }
-                        tokio::time::sleep(std::time::Duration::from_secs(15)).await;
+                        tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+                        // No timeout - keep waiting until ready
                     }
                 }
             }

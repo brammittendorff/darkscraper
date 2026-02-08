@@ -75,51 +75,36 @@ services:
 
   # --- I2P instances (3 always-on, 2 extra via profile) ---
   i2p1:
-    image: divax/i2p:current
-    environment:
-      ENABLE_HTTPPROXY: 1
-      ENABLE_SOCKSPROXY: 1
-      ENABLE_SAM: 1
-      BANDWIDTH: "O"
+    build: ./docker/i2p
     volumes:
-      - i2p1data:/home/i2pd/data
-      - ./config/i2pd.conf:/home/i2pd/conf/i2pd.conf:ro
+      - i2p1data:/var/lib/i2pd
+      - ./config/i2pd.conf:/var/lib/i2pd/i2pd.conf:ro
     healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 4444 2>/dev/null || exit 1"]
+      test: ["CMD-SHELL", "netstat -tuln | grep -q 4444 || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 40
       start_period: 300s
 
   i2p2:
-    image: divax/i2p:current
-    environment:
-      ENABLE_HTTPPROXY: 1
-      ENABLE_SOCKSPROXY: 1
-      ENABLE_SAM: 1
-      BANDWIDTH: "O"
+    build: ./docker/i2p
     volumes:
-      - i2p2data:/home/i2pd/data
-      - ./config/i2pd.conf:/home/i2pd/conf/i2pd.conf:ro
+      - i2p2data:/var/lib/i2pd
+      - ./config/i2pd.conf:/var/lib/i2pd/i2pd.conf:ro
     healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 4444 2>/dev/null || exit 1"]
+      test: ["CMD-SHELL", "netstat -tuln | grep -q 4444 || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 40
       start_period: 300s
 
   i2p3:
-    image: divax/i2p:current
-    environment:
-      ENABLE_HTTPPROXY: 1
-      ENABLE_SOCKSPROXY: 1
-      ENABLE_SAM: 1
-      BANDWIDTH: "O"
+    build: ./docker/i2p
     volumes:
-      - i2p3data:/home/i2pd/data
-      - ./config/i2pd.conf:/home/i2pd/conf/i2pd.conf:ro
+      - i2p3data:/var/lib/i2pd
+      - ./config/i2pd.conf:/var/lib/i2pd/i2pd.conf:ro
     healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 4444 2>/dev/null || exit 1"]
+      test: ["CMD-SHELL", "netstat -tuln | grep -q 4444 || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 40
