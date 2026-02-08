@@ -92,15 +92,29 @@ impl NetworkDriver for TorDriver {
             .unwrap_or(false)
     }
 
-    async fn fetch(&self, url: &Url, config: &FetchConfig) -> Result<FetchResponse, CrawlError> {
+    async fn fetch(&self, url: &Url, config: &FetchConfig, retry_count: u32) -> Result<FetchResponse, CrawlError> {
         let start = Instant::now();
         let client = self.next_client();
-        debug!(url = %url, "fetching via tor");
 
-        let resp = client.get(url.as_str()).send().await.map_err(|e| {
-            warn!(url = %url, error = %e, "tor fetch failed");
-            CrawlError::Network(e.to_string())
-        })?;
+        // Progressive timeout: 10s, 20s, 30s, 60s
+        let timeout_secs = match retry_count {
+            0 => 10,  // Fast first check
+            1 => 20,  // Quick retry
+            2 => 30,  // Give slow sites more time
+            _ => 60,  // Final attempt
+        };
+        let timeout = Duration::from_secs(timeout_secs);
+
+        debug!(url = %url, timeout_secs, retry_count, "fetching via tor");
+
+        let resp = client.get(url.as_str())
+            .timeout(timeout)
+            .send()
+            .await
+            .map_err(|e| {
+                warn!(url = %url, error = %e, timeout_secs, "tor fetch failed");
+                CrawlError::Network(e.to_string())
+            })?;
 
         let status = resp.status().as_u16();
         let final_url = Url::parse(resp.url().as_str()).unwrap_or_else(|_| url.clone());
@@ -149,6 +163,12 @@ impl NetworkDriver for TorDriver {
 
     fn default_delay(&self) -> Duration {
         self.min_delay
+    }
+
+    fn max_retries(&self) -> u32 {
+        // Tor: Fail fast - 3 retries then mark dead (vs 4 default)
+        // At high scale, dead sites waste time - better to move on quickly
+        3
     }
 
     fn retry_policy(&self) -> (bool, u64) {

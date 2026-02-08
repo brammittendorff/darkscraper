@@ -11,7 +11,8 @@ use crate::error::CrawlError;
 pub trait NetworkDriver: Send + Sync + 'static {
     fn name(&self) -> &str;
     fn can_handle(&self, url: &Url) -> bool;
-    async fn fetch(&self, url: &Url, config: &FetchConfig) -> Result<FetchResponse, CrawlError>;
+    /// Fetch with progressive timeout based on retry_count (0=first, 1+=retries)
+    async fn fetch(&self, url: &Url, config: &FetchConfig, retry_count: u32) -> Result<FetchResponse, CrawlError>;
     fn max_concurrency(&self) -> usize;
     fn default_delay(&self) -> Duration;
 

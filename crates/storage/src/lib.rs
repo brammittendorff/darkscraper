@@ -11,7 +11,9 @@ pub struct Storage {
 
 impl Storage {
     pub async fn new(database_url: &str) -> Result<Self> {
-        Self::with_pool_size(database_url, 10).await
+        // Pool size: 80 to handle high worker counts (SCALE_LEVEL=5 = 186 workers)
+        // Postgres max_connections=100, leaving 20 for admin/monitoring
+        Self::with_pool_size(database_url, 80).await
     }
 
     pub async fn with_pool_size(database_url: &str, max_connections: u32) -> Result<Self> {

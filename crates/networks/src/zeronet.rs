@@ -81,12 +81,17 @@ impl NetworkDriver for ZeronetDriver {
         url.host_str().map(|h| h.ends_with(".bit")).unwrap_or(false)
     }
 
-    async fn fetch(&self, url: &Url, config: &FetchConfig) -> Result<FetchResponse, CrawlError> {
+    async fn fetch(&self, url: &Url, config: &FetchConfig, retry_count: u32) -> Result<FetchResponse, CrawlError> {
         let start = Instant::now();
         let idx = self.next_index();
         let proxy_url = self.to_proxy_url(url, idx);
         let client = &self.clients[idx];
-        debug!(url = %url, proxy_url = %proxy_url, "fetching via zeronet");
+
+        // Progressive timeout: 10s base + 10s per retry
+        let timeout_secs = 10 + (retry_count * 10);
+        let timeout = Duration::from_secs(timeout_secs as u64);
+
+        debug!(url = %url, proxy_url = %proxy_url, timeout_secs, retry_count, "fetching via zeronet");
 
         let resp = client
             .get(&proxy_url)
@@ -94,10 +99,11 @@ impl NetworkDriver for ZeronetDriver {
             .header("Accept-Encoding", "gzip, deflate")
             .header("Accept-Language", "en-US,en;q=0.9")
             .header("User-Agent", "Mozilla/5.0 (DarkScraper/1.0; +https://github.com/yourusername/darkscraper)")
+            .timeout(timeout)
             .send()
             .await
             .map_err(|e| {
-                warn!(url = %url, proxy_url = %proxy_url, error = %e, "zeronet fetch failed");
+                warn!(url = %url, proxy_url = %proxy_url, error = %e, timeout_secs, "zeronet fetch failed");
                 CrawlError::Network(e.to_string())
             })?;
 

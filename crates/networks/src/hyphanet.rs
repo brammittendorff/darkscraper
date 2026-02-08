@@ -121,20 +121,26 @@ impl NetworkDriver for HyphanetDriver {
         url.scheme() == "freenet" || url.scheme() == "hyphanet"
     }
 
-    async fn fetch(&self, url: &Url, config: &FetchConfig) -> Result<FetchResponse, CrawlError> {
+    async fn fetch(&self, url: &Url, config: &FetchConfig, retry_count: u32) -> Result<FetchResponse, CrawlError> {
         let start = Instant::now();
         let idx = self.next_index();
         let proxy_url = self.to_proxy_url(url, idx);
         let client = &self.clients[idx];
-        debug!(url = %url, proxy_url = %proxy_url, "fetching via hyphanet");
+
+        // Progressive timeout: 10s base + 10s per retry
+        let timeout_secs = 10 + (retry_count * 10);
+        let timeout = Duration::from_secs(timeout_secs as u64);
+
+        debug!(url = %url, proxy_url = %proxy_url, timeout_secs, retry_count, "fetching via hyphanet");
 
         let resp = client
             .get(&proxy_url)
             .header("Accept", "text/html,application/xhtml+xml,*/*")
+            .timeout(timeout)
             .send()
             .await
             .map_err(|e| {
-                warn!(url = %url, error = %e, "hyphanet fetch failed");
+                warn!(url = %url, error = %e, timeout_secs, "hyphanet fetch failed");
                 CrawlError::Network(e.to_string())
             })?;
 

@@ -10,7 +10,7 @@ socks_proxies = ["tor1:9050", "tor2:9050", "tor3:9050"]
 max_concurrency = 32
 min_delay_seconds = 0
 connect_timeout_seconds = 30
-request_timeout_seconds = 60
+request_timeout_seconds = 30
 
 [i2p]
 enabled = true

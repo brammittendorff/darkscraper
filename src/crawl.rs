@@ -584,7 +584,7 @@ pub async fn run_crawl(
                         // NO POLITENESS CHECKS - just crawl everything in parallel
 
                         info!(worker_id, url = %url, depth, retry = job.retry_count, "fetching");
-                        let resp = match driver.fetch(&url, &fetch_config).await {
+                        let resp = match driver.fetch(&url, &fetch_config, job.retry_count).await {
                             Ok(r) => r,
                             Err(e) => {
                                 let retries = job.retry_count;
@@ -593,7 +593,7 @@ pub async fn run_crawl(
                                     warn!(worker_id, url = %url, retry = retries, "fetch failed, will retry: {}", e);
                                     let retry_job = CrawlJob {
                                         retry_count: retries + 1,
-                                        priority: job.priority * 0.5,
+                                        priority: job.priority * 0.9, // Small penalty (was 0.5 - too harsh!)
                                         ..job
                                     };
                                     frontier.push(retry_job).await;
