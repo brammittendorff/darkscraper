@@ -4,18 +4,20 @@ High-performance dark web crawler and OSINT platform designed for intelligence g
 
 ## Overview
 
-DarkScraper is a Rust-based distributed crawler that navigates and indexes content from Tor, I2P, ZeroNet, Hyphanet (formerly Freenet), and Lokinet. It automatically extracts and catalogs entities such as email addresses, cryptocurrency wallets, phone numbers, PGP fingerprints, and usernames, storing everything in PostgreSQL for advanced search and analysis.
+DarkScraper is a Rust-based distributed crawler that navigates and indexes content from Tor, I2P, Hyphanet (formerly Freenet), and Lokinet. It automatically extracts and catalogs entities such as email addresses, cryptocurrency wallets, phone numbers, PGP fingerprints, and usernames, storing everything in PostgreSQL for advanced search and analysis.
+
+**Note**: ZeroNet support has been disabled (Feb 2026) due to network death - zero active peers/seeders despite working infrastructure.
 
 **Key Innovation:** Intelligent prioritization system that automatically discovers and prioritizes cryptographic addresses (base32, base64, Bitcoin addresses) over human-readable aliases, enabling deeper infrastructure mapping and correlation analysis.
 
 ## Features
 
-- **Multi-Network Support**: Crawl across 5 anonymous networks simultaneously
+- **Multi-Network Support**: Crawl across 4 anonymous networks simultaneously
   - **Tor** (.onion) - v3 onion addresses
   - **I2P** (.i2p, .b32.i2p) - Java I2P with automatic base32 discovery
-  - **ZeroNet** (.bit) - Bitcoin-addressed sites
   - **Hyphanet** (USK@/SSK@/CHK@) - Formerly Freenet
   - **Lokinet** (.loki) - Oxen network
+  - ~~**ZeroNet** (.bit)~~ - DISABLED: Network dead (no active peers as of Feb 2026)
 
 - **Cryptographic Address Prioritization**:
   - Automatically detects and prioritizes permanent cryptographic addresses
@@ -92,7 +94,6 @@ This launches:
 - PostgreSQL database
 - 3 Tor instances (SOCKS5 proxies)
 - 3 Java I2P instances (HTTP proxies + router console)
-- 3 ZeroNet instances
 - 3 Hyphanet instances
 - 3 Lokinet instances (privileged mode for TUN interface)
 - Grafana dashboard (http://localhost:3000)
@@ -118,11 +119,10 @@ For higher throughput, launch additional network instances:
 
 ```bash
 # Launch with 5 instances of each network
-TOR_INSTANCES=5 I2P_INSTANCES=5 ZERONET_INSTANCES=5 \
+TOR_INSTANCES=5 I2P_INSTANCES=5 \
 HYPHANET_INSTANCES=5 LOKINET_INSTANCES=5 \
 docker compose --profile tor-extra --profile i2p-extra \
-  --profile zeronet-extra --profile hyphanet-extra \
-  --profile lokinet-extra up -d
+  --profile hyphanet-extra --profile lokinet-extra up -d
 ```
 
 ## Network-Specific Information
@@ -143,13 +143,11 @@ docker compose --profile tor-extra --profile i2p-extra \
 - **Router Console**: Port 7657 (not exposed by default)
 - **Status Check**: See `docker/i2p/README.md` and `QUICKSTART_I2P.md`
 
-### ZeroNet
-- **Bootstrap Time**: 30-60 seconds
-- **Proxy Type**: HTTP on port 43110
-- **Address Formats**:
-  - Cryptographic: Bitcoin addresses like `1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D.bit`
-  - Human-readable: Namecoin domains like `talk.bit`
-- **Status**: Ready quickly
+### ~~ZeroNet~~ (DISABLED)
+- **Status**: Network dead as of February 2026
+- **Reason**: Zero active peers/seeders despite working trackers and infrastructure
+- **Note**: Code remains in codebase but network is disabled in config
+- If network recovers, can be re-enabled by setting `enabled = true` in `config/default.toml`
 
 ### Hyphanet (formerly Freenet)
 - **Bootstrap Time**: 2-3 minutes
@@ -210,7 +208,6 @@ Override configuration at runtime:
 |----------|-------------|---------|
 | `TOR_WORKERS` | Concurrent Tor crawlers | 32 |
 | `I2P_WORKERS` | Concurrent I2P crawlers | 8 |
-| `ZERONET_WORKERS` | Concurrent ZeroNet crawlers | 8 |
 | `HYPHANET_WORKERS` | Concurrent Hyphanet crawlers | 8 |
 | `LOKINET_WORKERS` | Concurrent Lokinet crawlers | 8 |
 | `TOR_ENABLED` | Enable/disable Tor crawling | true |
@@ -229,12 +226,10 @@ DarkScraper automatically prioritizes URLs based on whether they use permanent c
 - Tor: 56-char `.onion` v3 addresses
 - I2P: `.b32.i2p` addresses (52 or 56+ chars)
 - Hyphanet: `USK@`/`SSK@`/`CHK@` addresses
-- ZeroNet: Bitcoin address format `.bit`
 - Lokinet: 52-char `.loki` addresses
 
 **Tier 2 (Priority 1.0)** - Human-Readable Names:
 - I2P: Short `.i2p` addressbook names
-- ZeroNet: Namecoin `.bit` domains
 - Lokinet: ONS `.loki` names
 
 **Depth Penalty**: Priority divided by `(depth + 2)` to favor shallow URLs
@@ -395,7 +390,7 @@ Adjust worker counts based on your hardware:
 
 ```bash
 # High-performance setup (16+ cores, 16GB+ RAM)
-TOR_WORKERS=64 I2P_WORKERS=16 ZERONET_WORKERS=16 \
+TOR_WORKERS=64 I2P_WORKERS=16 \
 HYPHANET_WORKERS=16 LOKINET_WORKERS=16 \
 docker compose up -d
 ```
@@ -405,7 +400,7 @@ docker compose up -d
 - **Tor**: High concurrency works well (32-64 workers)
 - **I2P**: Lower concurrency recommended (8-16 workers) due to network latency
 - **Hyphanet**: Very low concurrency (4-8 workers) - extremely slow network
-- **ZeroNet/Lokinet**: Moderate concurrency (8-16 workers)
+- **Lokinet**: Moderate concurrency (8-16 workers)
 
 ### Resource Requirements
 
@@ -516,15 +511,16 @@ docker compose exec postgres psql -U crawler -d darkscraper -c "SELECT COUNT(*) 
 
 ## Default Seeds
 
-DarkScraper includes 79 high-quality seed URLs across all networks:
+DarkScraper includes 56 high-quality seed URLs across active networks:
 
 - **11 Tor seeds**: Hidden wikis, directories, search engines
 - **27 I2P seeds**: notbob.i2p, identiguy.i2p, forums, directories
-- **23 ZeroNet seeds**: ZeroHello, site indexes, community hubs
 - **14 Hyphanet seeds**: USK indexes, wikis (updated regularly)
 - **4 Lokinet seeds**: Block explorers, wikis
 
 Seeds are in `src/seeds.rs` and optimized for maximum link discovery.
+
+**Note**: 23 ZeroNet seeds remain in code but are not used (network disabled).
 
 ## Contributing
 
@@ -557,7 +553,7 @@ Built with:
 - [PostgreSQL](https://www.postgresql.org/) - Database
 - [Grafana](https://grafana.com/) - Monitoring
 
-Special thanks to the anonymous network communities: Tor Project, I2P (geti2p.net), ZeroNet, Hyphanet (hyphanet.org), and Oxen (Lokinet).
+Special thanks to the anonymous network communities: Tor Project, I2P (geti2p.net), Hyphanet (hyphanet.org), and Oxen (Lokinet).
 
 ## Contact
 
