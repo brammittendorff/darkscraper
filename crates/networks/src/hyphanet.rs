@@ -127,9 +127,14 @@ impl NetworkDriver for HyphanetDriver {
         let proxy_url = self.to_proxy_url(url, idx);
         let client = &self.clients[idx];
 
-        // Progressive timeout: 10s base + 10s per retry
-        let timeout_secs = 10 + (retry_count * 10);
-        let timeout = Duration::from_secs(timeout_secs as u64);
+        // Progressive timeout for Hyphanet (very slow network): 30s, 60s, 120s, 180s
+        let timeout_secs = match retry_count {
+            0 => 30,   // Hyphanet very slow, need patience even on first attempt
+            1 => 60,
+            2 => 120,
+            _ => 180,  // Max 3 minutes
+        };
+        let timeout = Duration::from_secs(timeout_secs);
 
         debug!(url = %url, proxy_url = %proxy_url, timeout_secs, retry_count, "fetching via hyphanet");
 

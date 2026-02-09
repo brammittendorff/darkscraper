@@ -102,9 +102,14 @@ impl NetworkDriver for I2pDriver {
         let start = Instant::now();
         let client = self.next_client();
 
-        // Progressive timeout: 10s base + 10s per retry
-        let timeout_secs = 10 + (retry_count * 10);
-        let timeout = Duration::from_secs(timeout_secs as u64);
+        // Progressive timeout for I2P (slower network): 15s, 30s, 60s, 90s
+        let timeout_secs = match retry_count {
+            0 => 15,  // I2P slower than Tor, give more time
+            1 => 30,
+            2 => 60,
+            _ => 90,  // Max timeout
+        };
+        let timeout = Duration::from_secs(timeout_secs);
 
         debug!(url = %url, timeout_secs, retry_count, "fetching via i2p");
 

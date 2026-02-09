@@ -7,6 +7,10 @@ use anyhow::Result;
 use clap::Parser;
 use tracing::warn;
 
+// Use mimalloc to prevent memory bloat (glibc malloc doesn't release memory with high concurrency)
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 use darkscraper_core::config::AppConfig;
 
 use crate::cli::{Cli, Commands};

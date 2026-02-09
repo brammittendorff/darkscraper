@@ -6,7 +6,7 @@ use std::time::Instant;
 use dashmap::DashMap;
 use growable_bloom_filter::GrowableBloom;
 use priority_queue::PriorityQueue;
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 use tracing::debug;
 use url::Url;
 
@@ -77,9 +77,9 @@ impl NetworkQueue {
 
 pub struct CrawlFrontier {
     /// Per-network priority queues — workers only pop from their own network
-    networks: DashMap<String, Arc<Mutex<NetworkQueue>>>,
+    networks: DashMap<String, Arc<RwLock<NetworkQueue>>>,
     /// Global bloom filter for URL dedup (shared across all networks)
-    seen_urls: Arc<Mutex<GrowableBloom>>,
+    seen_urls: Arc<RwLock<GrowableBloom>>,
     /// Per-host last-request timestamp for politeness
     host_last_seen: DashMap<String, Instant>,
 }
@@ -99,7 +99,7 @@ impl CrawlFrontier {
 
         Self {
             networks: DashMap::new(),
-            seen_urls: Arc::new(Mutex::new(bloom)),
+            seen_urls: Arc::new(RwLock::new(bloom)),
             host_last_seen: DashMap::new(),
         }
     }
@@ -108,7 +108,7 @@ impl CrawlFrontier {
     /// Does NOT add them to any queue — just marks them in the bloom filter
     /// so they won't be re-crawled.
     pub async fn mark_seen_batch(&self, urls: &[String]) {
-        let mut bloom = self.seen_urls.lock().await;
+        let mut bloom = self.seen_urls.write().await;
         for url_str in urls {
             if let Ok(url) = Url::parse(url_str) {
                 let normalized = Self::normalize_url(&url);
@@ -202,10 +202,10 @@ impl CrawlFrontier {
     }
 
     /// Get or create the network queue for a given network.
-    fn get_network_queue(&self, network: &str) -> Arc<Mutex<NetworkQueue>> {
+    fn get_network_queue(&self, network: &str) -> Arc<RwLock<NetworkQueue>> {
         self.networks
             .entry(network.to_string())
-            .or_insert_with(|| Arc::new(Mutex::new(NetworkQueue::new())))
+            .or_insert_with(|| Arc::new(RwLock::new(NetworkQueue::new())))
             .clone()
     }
 
@@ -217,7 +217,16 @@ impl CrawlFrontier {
 
         // Skip bloom check for retries — they were already seen but need re-queuing
         if !is_retry {
-            let mut bloom = self.seen_urls.lock().await;
+            // First check with read lock
+            {
+                let bloom = self.seen_urls.read().await;
+                if bloom.contains(&normalized) {
+                    return false;
+                }
+            }
+            // Then acquire write lock to insert
+            let mut bloom = self.seen_urls.write().await;
+            // Double-check after acquiring write lock (avoid race condition)
             if bloom.contains(&normalized) {
                 return false;
             }
@@ -225,7 +234,7 @@ impl CrawlFrontier {
         }
 
         let nq = self.get_network_queue(&network);
-        let mut queue = nq.lock().await;
+        let mut queue = nq.write().await;
         queue.push(normalized, job);
         true
     }
@@ -243,7 +252,7 @@ impl CrawlFrontier {
         // Single bloom lock for all fresh URLs
         let mut to_enqueue = retries;
         if !fresh.is_empty() {
-            let mut bloom = self.seen_urls.lock().await;
+            let mut bloom = self.seen_urls.write().await;
             for job in fresh {
                 let normalized = Self::normalize_url(&job.url);
                 if !bloom.contains(&normalized) {
@@ -265,7 +274,7 @@ impl CrawlFrontier {
         let mut added = 0;
         for (network, jobs) in by_network {
             let nq = self.get_network_queue(&network);
-            let mut queue = nq.lock().await;
+            let mut queue = nq.write().await;
             for (normalized, job) in jobs {
                 queue.push(normalized, job);
                 added += 1;
@@ -278,7 +287,7 @@ impl CrawlFrontier {
     /// Workers call this with their assigned network — no cross-network pollution.
     pub async fn pop_for_network(&self, network: &str) -> Option<CrawlJob> {
         let nq = self.networks.get(network)?;
-        let mut queue = nq.lock().await;
+        let mut queue = nq.write().await;
         queue.pop()
     }
 
@@ -288,7 +297,7 @@ impl CrawlFrontier {
         let Some(nq) = self.networks.get(network) else {
             return Vec::new();
         };
-        let mut queue = nq.lock().await;
+        let mut queue = nq.write().await;
         let mut batch = Vec::with_capacity(n.min(queue.len()));
         for _ in 0..n {
             match queue.pop() {
@@ -306,7 +315,7 @@ impl CrawlFrontier {
             return;
         }
         let nq = self.get_network_queue(network);
-        let mut queue = nq.lock().await;
+        let mut queue = nq.write().await;
         for job in jobs {
             let normalized = Self::normalize_url(&job.url);
             queue.push(normalized, job);
@@ -316,7 +325,7 @@ impl CrawlFrontier {
     /// Check if a specific network's queue is empty.
     pub async fn is_network_empty(&self, network: &str) -> bool {
         match self.networks.get(network) {
-            Some(nq) => nq.lock().await.is_empty(),
+            Some(nq) => nq.read().await.is_empty(),
             None => true,
         }
     }
@@ -325,7 +334,7 @@ impl CrawlFrontier {
     pub async fn len(&self) -> usize {
         let mut total = 0;
         for entry in self.networks.iter() {
-            total += entry.value().lock().await.len();
+            total += entry.value().read().await.len();
         }
         total
     }
@@ -333,7 +342,7 @@ impl CrawlFrontier {
     /// How many items in a specific network's queue.
     pub async fn network_len(&self, network: &str) -> usize {
         match self.networks.get(network) {
-            Some(nq) => nq.lock().await.len(),
+            Some(nq) => nq.read().await.len(),
             None => 0,
         }
     }
@@ -378,11 +387,11 @@ impl CrawlFrontier {
                 // Add directly to network queue, bypassing bloom check.
                 // Mark as seen so discovered links TO seeds are deduped.
                 {
-                    let mut bloom = self.seen_urls.lock().await;
+                    let mut bloom = self.seen_urls.write().await;
                     bloom.insert(&normalized);
                 }
                 let nq = self.get_network_queue(network);
-                let mut queue = nq.lock().await;
+                let mut queue = nq.write().await;
                 queue.push(normalized, job);
                 added += 1;
             }
@@ -401,7 +410,7 @@ impl CrawlFrontier {
     /// Pop from any network (for legacy code). Checks networks in order.
     pub async fn pop(&self) -> Option<CrawlJob> {
         for entry in self.networks.iter() {
-            let mut queue = entry.value().lock().await;
+            let mut queue = entry.value().write().await;
             if let Some(job) = queue.pop() {
                 return Some(job);
             }
@@ -412,7 +421,7 @@ impl CrawlFrontier {
     /// Check if all network queues are empty.
     pub async fn is_empty(&self) -> bool {
         for entry in self.networks.iter() {
-            if !entry.value().lock().await.is_empty() {
+            if !entry.value().read().await.is_empty() {
                 return false;
             }
         }
