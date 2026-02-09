@@ -9,6 +9,7 @@ darkscraper-storage = { path = "../storage" }
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
 anyhow = "1"
 thiserror = "2"
 
@@ -27,6 +28,9 @@ serde_json = "1"
 # Random data generation
 rand = "0.8"
 fake = { version = "2.9", features = ["derive"] }
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "chrono"] }
 
 # Logging
 tracing = "0.1"

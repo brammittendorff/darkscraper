@@ -12,53 +12,5 @@ services:
       retries: 10
       start_period: 30s
 
-  tor7:
-    image: osminogin/tor-simple:latest
-    volumes:
-      - tor7data:/var/lib/tor
-    healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 9050 2>/dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-
-  tor8:
-    image: osminogin/tor-simple:latest
-    volumes:
-      - tor8data:/var/lib/tor
-    healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 9050 2>/dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-
-  tor9:
-    image: osminogin/tor-simple:latest
-    volumes:
-      - tor9data:/var/lib/tor
-    healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 9050 2>/dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-
-  tor10:
-    image: osminogin/tor-simple:latest
-    volumes:
-      - tor10data:/var/lib/tor
-    healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 9050 2>/dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-
 volumes:
   tor6data:
-  tor7data:
-  tor8data:
-  tor9data:
-  tor10data:

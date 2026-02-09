@@ -163,6 +163,34 @@ impl HeadlessBrowser {
         Ok(())
     }
 
+    /// Try to click an element using multiple selector strategies
+    pub fn try_click(&self, tab: &Tab, selectors: &[&str]) -> Result<bool, RegistrationError> {
+        for selector in selectors {
+            if self.click(tab, selector).is_ok() {
+                info!("Successfully clicked: {}", selector);
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
+    /// Check if an element exists on the page
+    pub fn element_exists(&self, tab: &Tab, selector: &str) -> bool {
+        tab.evaluate(
+            &format!(
+                r#"document.querySelector('{}') !== null"#,
+                selector
+            ),
+            false,
+        )
+        .map(|result| {
+            result.value
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+        })
+        .unwrap_or(false)
+    }
+
     /// Get cookies from the browser session
     pub fn get_cookies(&self, tab: &Tab) -> Result<String, RegistrationError> {
         let cookies = tab.get_cookies()

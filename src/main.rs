@@ -14,7 +14,6 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use darkscraper_core::config::AppConfig;
 
 use crate::cli::{Cli, Commands};
-use crate::commands::{run_export, run_search, run_status};
 use crate::crawl::run_crawl;
 
 fn main() -> Result<()> {
@@ -185,13 +184,32 @@ async fn async_main() -> Result<()> {
             entity_type,
             limit,
         } => {
-            run_search(config, query, entity, entity_type, limit).await?;
+            commands::search::run(config, query, entity, entity_type, limit).await?;
         }
         Commands::Status => {
-            run_status(config).await?;
+            commands::status::run(config).await?;
         }
-        Commands::Export { format, output } => {
-            run_export(config, &format, &output).await?;
+        Commands::AutoRegister {
+            max_concurrent,
+            max_per_domain,
+            networks,
+            enable_captcha,
+            skip_email_verification,
+        } => {
+            let storage = darkscraper_storage::Storage::new(&config.database.postgres_url).await?;
+            commands::auto_register::run(
+                storage,
+                Some(max_concurrent),
+                Some(max_per_domain),
+                networks,
+                enable_captcha,
+                skip_email_verification,
+            )
+            .await?;
+        }
+        Commands::Export { format: _, output: _ } => {
+            eprintln!("Export command not yet implemented");
+            // TODO: Implement export functionality
         }
     }
 

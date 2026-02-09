@@ -343,6 +343,47 @@ pub async fn run_crawl(
                                 }
 
                                 info!(page_id = id, url = %result.page.url, total = pages_stored, "stored page");
+
+                                // Auto-register if page has registration form
+                                if result.page.metadata.has_register_form {
+                                    let storage_clone = storage.clone();
+                                    let page_clone = result.page.clone();
+                                    let network = result.page.network.clone();
+
+                                    tokio::spawn(async move {
+                                        let proxy = match network.as_str() {
+                                            "tor" => Some("socks5://tor1:9050"),
+                                            "i2p" => Some("http://i2p1:4444"),
+                                            "lokinet" => Some("socks5://lokinet1:1080"),
+                                            "hyphanet" => Some("http://hyphanet1:8888"),
+                                            _ => None,
+                                        };
+
+                                        // Use a timeout to prevent blocking forever on slow sites
+                                        let timeout_duration = tokio::time::Duration::from_secs(600); // 10 min max
+
+                                        match tokio::time::timeout(
+                                            timeout_duration,
+                                            darkscraper_registration::try_auto_register(
+                                                &page_clone,
+                                                &storage_clone,
+                                                proxy,
+                                            )
+                                        ).await {
+                                            Ok(Ok(success)) => {
+                                                if success {
+                                                    info!(domain = %page_clone.domain, "✓ auto-register success");
+                                                }
+                                            }
+                                            Ok(Err(e)) => {
+                                                warn!(domain = %page_clone.domain, "auto-register failed: {}", e);
+                                            }
+                                            Err(_) => {
+                                                warn!(domain = %page_clone.domain, "auto-register timed out after 10 minutes");
+                                            }
+                                        }
+                                    });
+                                }
                             }
                             Err(e) => error!(url = %result.page.url, "store failed: {}", e),
                         }

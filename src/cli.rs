@@ -47,6 +47,28 @@ pub enum Commands {
     },
     /// Show crawl status and database stats
     Status,
+    /// Automatically register accounts on discovered sites
+    AutoRegister {
+        /// Maximum concurrent registrations
+        #[arg(short = 'c', long, default_value = "5")]
+        max_concurrent: usize,
+
+        /// Maximum accounts per domain
+        #[arg(short = 'd', long, default_value = "3")]
+        max_per_domain: usize,
+
+        /// Networks to target (tor,i2p,lokinet,hyphanet)
+        #[arg(short = 'n', long, value_delimiter = ',')]
+        networks: Option<Vec<String>>,
+
+        /// Enable CAPTCHA solving (uses free solver)
+        #[arg(long)]
+        enable_captcha: bool,
+
+        /// Skip sites requiring email verification
+        #[arg(long)]
+        skip_email_verification: bool,
+    },
     /// Export crawled data
     Export {
         /// Output format (json)

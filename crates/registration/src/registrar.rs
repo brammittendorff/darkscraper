@@ -145,7 +145,8 @@ impl Registrar {
         password: &str,
     ) -> Result<RegistrationAttempt, RegistrationError> {
         // Create browser instance
-        let browser = HeadlessBrowser::new(self.config.clone(), proxy_url)?;
+        let browser = HeadlessBrowser::new(self.config.clone(), proxy_url)
+            .map_err(|e| RegistrationError::BrowserError(e.to_string()))?;
 
         // Navigate and wait for content to load (handles waiting screens)
         let tab = browser.navigate_and_wait(url).await?;

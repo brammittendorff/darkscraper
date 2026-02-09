@@ -1,3 +1,12 @@
+// Core modules
+pub mod core;
+pub mod detection;
+pub mod adapters;
+pub mod orchestrator;
+pub mod auto_register;
+pub mod auto_register_inline;
+
+// Legacy modules (will be phased out or refactored)
 pub mod browser;
 pub mod captcha;
 pub mod captcha_free;
@@ -6,6 +15,16 @@ pub mod form_filler;
 pub mod registrar;
 pub mod multilingual;
 pub mod temp_email_providers;
+
+// Re-exports for convenience
+pub use core::types::*;
+pub use core::context::*;
+pub use core::result::*;
+pub use detection::*;
+pub use adapters::*;
+pub use orchestrator::*;
+pub use auto_register::*;
+pub use auto_register_inline::*;
 
 
 #[derive(Debug, Clone)]
@@ -53,7 +72,7 @@ pub struct RegistrationAttempt {
     pub session_cookies: Option<String>,
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum RegistrationError {
     #[error("Form not found on page")]
     FormNotFound,
@@ -76,6 +95,6 @@ pub enum RegistrationError {
     #[error("Timeout waiting for content")]
     Timeout,
 
-    #[error(transparent)]
-    Other(#[from] anyhow::Error),
+    #[error("Other error: {0}")]
+    Other(String),
 }

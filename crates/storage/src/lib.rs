@@ -5,6 +5,9 @@ use tracing::info;
 
 use darkscraper_core::PageData;
 
+mod registration_queries;
+
+#[derive(Clone)]
 pub struct Storage {
     pool: PgPool,
 }
@@ -318,6 +321,16 @@ impl Storage {
 
     pub fn pool(&self) -> &PgPool {
         &self.pool
+    }
+
+    /// Count existing accounts for a domain
+    pub async fn count_accounts_for_domain(&self, domain: &str) -> Result<i64> {
+        registration_queries::count_accounts_for_domain(&self.pool, domain).await
+    }
+
+    /// Count recent failed registration attempts
+    pub async fn count_recent_failed_attempts(&self, domain: &str, seconds: i64) -> Result<i64> {
+        registration_queries::count_recent_failed_attempts(&self.pool, domain, seconds).await
     }
 
     // --- Registration Account Management ---
