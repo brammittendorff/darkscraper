@@ -280,8 +280,8 @@ pub async fn run_crawl(
     let (result_tx, mut result_rx) = mpsc::channel::<CrawlResult>(10000);
     let (shutdown_tx, _shutdown_rx) = tokio::sync::broadcast::channel::<()>(1);
 
-    // Track which domains we've already probed for infrastructure
-    let probed_domains: Arc<Mutex<HashSet<String>>> = Arc::new(Mutex::new(HashSet::new()));
+    // Track which domains we've already probed for infrastructure - lock-free with DashSet
+    let probed_domains: Arc<DashSet<String>> = Arc::new(DashSet::new());
 
     // Track pages crawled per domain to prevent one domain from monopolizing the queue
     let domain_page_count: Arc<DashMap<String, AtomicUsize>> = Arc::new(DashMap::new());
@@ -746,10 +746,8 @@ pub async fn run_crawl(
                         // 5. Infrastructure probing (once per domain)
                         // Skip for hyphanet — opaque scheme has no domain to probe
                         if url.scheme() != "hyphanet" && url.scheme() != "freenet" {
-                            let mut probed_set = probed.lock().await;
-                            if !probed_set.contains(&domain) {
-                                probed_set.insert(domain.clone());
-                                drop(probed_set);
+                            if !probed.contains(&domain) {
+                                probed.insert(domain.clone());
 
                                 let base = format!("{}://{}", url.scheme(), domain);
                                 if let Ok(base_url) = url::Url::parse(&base) {
@@ -775,7 +773,6 @@ pub async fn run_crawl(
 
                             // Collect all jobs into a batch, then push once
                             // Boost priority for NEW domains (never seen before)
-                            let probed_set = probed.lock().await;
                             let mut batch: Vec<CrawlJob> = Vec::with_capacity(discovered_urls.len());
                             for url_str in &discovered_urls {
                                 // Lock-free dead URL check via DashSet
@@ -785,8 +782,8 @@ pub async fn run_crawl(
                                 if let Some(mut job) = make_crawl_job(url_str, depth, &url, &drivers) {
                                     let link_domain = job.url.host_str().unwrap_or("");
                                     if !link_domain.is_empty() {
-                                        // MASSIVE priority boost for domains we haven't visited yet
-                                        if !probed_set.contains(link_domain) {
+                                        // MASSIVE priority boost for domains we haven't visited yet - lock-free check
+                                        if !probed.contains(link_domain) {
                                             job.priority *= 1000.0;
                                         }
                                         // Penalty for domains approaching page limit
@@ -804,7 +801,6 @@ pub async fn run_crawl(
                                     batch.push(job);
                                 }
                             }
-                            drop(probed_set);
                             if !batch.is_empty() {
                                 let enqueued = frontier.push_batch(batch).await;
                                 if enqueued > 0 {
