@@ -17,8 +17,19 @@ use crate::cli::{Cli, Commands};
 use crate::commands::{run_export, run_search, run_status};
 use crate::crawl::run_crawl;
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
+    // Custom Tokio runtime for high concurrency (186 workers at SCALE_LEVEL=5)
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(32)           // Increase from default (CPU cores)
+        .thread_stack_size(8 * 1024 * 1024)  // 8MB stack per thread
+        .max_blocking_threads(512)    // Allow more blocking operations
+        .enable_all()
+        .build()?;
+
+    runtime.block_on(async_main())
+}
+
+async fn async_main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()

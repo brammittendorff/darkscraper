@@ -24,6 +24,7 @@ COPY crates/storage/Cargo.toml crates/storage/Cargo.toml
 COPY crates/frontier/Cargo.toml crates/frontier/Cargo.toml
 COPY crates/search/Cargo.toml crates/search/Cargo.toml
 COPY crates/discovery/Cargo.toml crates/discovery/Cargo.toml
+COPY crates/registration/Cargo.toml crates/registration/Cargo.toml
 
 # Create dummy source files to pre-compile dependencies
 RUN mkdir -p src && echo 'fn main() {}' > src/main.rs \
@@ -32,9 +33,11 @@ RUN mkdir -p src && echo 'fn main() {}' > src/main.rs \
     && mkdir -p crates/parser/src && touch crates/parser/src/lib.rs \
     && mkdir -p crates/storage/src && touch crates/storage/src/lib.rs \
     && mkdir -p crates/storage/migrations && touch crates/storage/migrations/001_init.sql \
+    && mkdir -p crates/storage/migrations && touch crates/storage/migrations/002_registration.sql \
     && mkdir -p crates/frontier/src && touch crates/frontier/src/lib.rs \
     && mkdir -p crates/search/src && touch crates/search/src/lib.rs \
-    && mkdir -p crates/discovery/src && touch crates/discovery/src/lib.rs
+    && mkdir -p crates/discovery/src && touch crates/discovery/src/lib.rs \
+    && mkdir -p crates/registration/src && touch crates/registration/src/lib.rs
 
 # Build dependencies only (this layer is cached)
 RUN cargo build --release 2>/dev/null || true
@@ -54,7 +57,18 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
+    chromium \
+    fonts-liberation \
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libdrm2 \
+    libxkbcommon0 \
+    libgbm1 \
+    libasound2 \
     && rm -rf /var/lib/apt/lists/*
+
+# Set chromium path for headless_chrome crate
+ENV CHROME_PATH=/usr/bin/chromium
 
 COPY --from=builder /app/target/release/darkscraper /usr/local/bin/darkscraper
 COPY config/default.toml /etc/darkscraper/default.toml

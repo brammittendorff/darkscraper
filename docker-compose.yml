@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16
+    command: postgres -c max_connections=250
     environment:
       POSTGRES_DB: darkscraper
       POSTGRES_USER: crawler
@@ -370,6 +371,10 @@ services:
   darkscraper:
     build: .
     restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     depends_on:
       postgres:
         condition: service_healthy

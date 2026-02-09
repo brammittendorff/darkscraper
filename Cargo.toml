@@ -8,6 +8,7 @@ members = [
     "crates/frontier",
     "crates/search",
     "crates/discovery",
+    "crates/registration",
 ]
 
 [package]
@@ -29,6 +30,7 @@ darkscraper-frontier = { path = "crates/frontier" }
 mimalloc = { version = "0.1", default-features = false }
 darkscraper-search = { path = "crates/search" }
 darkscraper-discovery = { path = "crates/discovery" }
+darkscraper-registration = { path = "crates/registration" }
 
 tokio = { version = "1", features = ["full"] }
 clap = { version = "4", features = ["derive"] }

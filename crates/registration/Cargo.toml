@@ -1,0 +1,42 @@
+[package]
+name = "darkscraper-registration"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+darkscraper-core = { path = "../core" }
+darkscraper-storage = { path = "../storage" }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+thiserror = "2"
+
+# HTTP & Browser automation
+reqwest = { version = "0.12", default-features = false, features = ["json", "cookies", "socks", "rustls-tls"] }
+headless_chrome = "1.0"
+
+# HTML parsing
+scraper = "0.20"
+regex = "1"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Random data generation
+rand = "0.8"
+fake = { version = "2.9", features = ["derive"] }
+
+# Logging
+tracing = "0.1"
+
+# Crypto
+sha2 = "0.10"
+hex = "0.4"
+
+# URL handling
+url = "2"
+
+# Time
+chrono = { workspace = true }

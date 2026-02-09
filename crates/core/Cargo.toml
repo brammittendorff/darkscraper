@@ -12,3 +12,4 @@ thiserror = { workspace = true }
 url = { workspace = true }
 chrono = { workspace = true }
 tracing = { workspace = true }
+dashmap = "6"

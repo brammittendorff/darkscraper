@@ -1,0 +1,43 @@
+# Dockerfile with FREE CAPTCHA solving tools
+
+FROM rust:1.75 as builder
+
+WORKDIR /app
+
+# Install FREE CAPTCHA solving dependencies
+RUN apt-get update && apt-get install -y \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    imagemagick \
+    libssl-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy source
+COPY . .
+
+# Build
+RUN cargo build --release --package darkscraper
+
+FROM debian:bookworm-slim
+
+# Install runtime dependencies for FREE CAPTCHA solving
+RUN apt-get update && apt-get install -y \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    imagemagick \
+    ca-certificates \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy binary
+COPY --from=builder /app/target/release/darkscraper /usr/local/bin/
+
+# Verify tools are installed
+RUN tesseract --version && \
+    convert --version && \
+    echo "✅ FREE CAPTCHA solving tools installed!"
+
+ENTRYPOINT ["darkscraper"]

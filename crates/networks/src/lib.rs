@@ -2,6 +2,7 @@ pub mod hyphanet;
 pub mod i2p;
 pub mod lokinet;
 pub mod tor;
+pub mod waiting_handler;
 pub mod zeronet;
 
 pub use self::hyphanet::HyphanetDriver;

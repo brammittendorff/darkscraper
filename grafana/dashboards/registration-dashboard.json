@@ -1,0 +1,302 @@
+{
+  "title": "\ud83d\udd10 Registration Dashboard",
+  "uid": "registration-dashboard",
+  "tags": [
+    "registration",
+    "accounts",
+    "captcha",
+    "darkscraper"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 36,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Pages with Waiting Screens (Need Headless Browser)",
+      "type": "table",
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT \n                    url, \n                    domain, \n                    network,\n                    title,\n                    LENGTH(body_text) as size_bytes,\n                    CASE WHEN has_register_form THEN '\u2713' ELSE '?' END as register,\n                    CASE WHEN has_login_form THEN '\u2713' ELSE '?' END as login,\n                    CASE WHEN has_captcha THEN '\u2713' ELSE '?' END as captcha,\n                    CASE WHEN requires_email THEN '\u2713' ELSE '?' END as email,\n                    SUBSTRING(body_text, 1, 150) as preview\n                FROM pages \n                WHERE (body_text ILIKE '%please wait%' \n                   OR body_text ILIKE '%bitte warten%' \n                   OR body_text ILIKE '%prosz\u0119 czeka\u0107%'\n                   OR body_text ILIKE '%ddos%' \n                   OR body_text ILIKE '%verifying%'\n                   OR body_text ILIKE '%cloudflare%')\n                  AND LENGTH(body_text) < 2000\n                ORDER BY fetched_at DESC \n                LIMIT 100",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "size_bytes"
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "title": "Registration Opportunities (Ready to Register)",
+      "type": "table",
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT \n                    p.url,\n                    p.domain,\n                    p.network,\n                    p.title,\n                    CASE WHEN p.has_captcha THEN '\ud83e\udd16 Yes' ELSE '\u2705 No' END as captcha,\n                    CASE WHEN p.requires_email THEN '\ud83d\udce7 Yes' ELSE '\u2705 No' END as email_needed,\n                    LENGTH(p.body_text) as content_size,\n                    p.fetched_at as discovered,\n                    'Not registered yet' as status\n                FROM pages p\n                LEFT JOIN registered_accounts ra ON p.domain = ra.site_domain\n                WHERE p.has_register_form = true \n                  AND ra.id IS NULL\n                ORDER BY p.has_captcha ASC, p.requires_email ASC, p.fetched_at DESC\n                LIMIT 100",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 3,
+      "title": "Created Accounts (Successfully Registered)",
+      "type": "table",
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT \n                    ra.site_domain as domain,\n                    ra.username,\n                    ra.email,\n                    ra.network,\n                    CASE \n                        WHEN ra.status = 'active' THEN '\u2705 Active'\n                        WHEN ra.status = 'banned' THEN '\u274c Banned'\n                        WHEN ra.status = 'verification_pending' THEN '\u23f3 Pending'\n                        ELSE ra.status\n                    END as status,\n                    CASE WHEN ra.email_verified THEN '\u2713 Verified' ELSE '\u2717 Not verified' END as email_status,\n                    ra.registered_at as created,\n                    ra.last_login_at as last_used,\n                    COALESCE(ra.registration_notes, 'No notes') as notes\n                FROM registered_accounts ra\n                ORDER BY ra.registered_at DESC\n                LIMIT 100",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 4,
+      "title": "Waiting Screens",
+      "type": "stat",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 0,
+        "y": 36
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) FROM pages WHERE body_text ILIKE '%wait%' AND LENGTH(body_text) < 500",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "yellow",
+            "mode": "fixed"
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 5,
+      "title": "With Forms",
+      "type": "stat",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 4,
+        "y": 36
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) FROM pages WHERE has_register_form = true",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "orange",
+            "mode": "fixed"
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 6,
+      "title": "Active Accounts",
+      "type": "stat",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 8,
+        "y": 36
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) FROM registered_accounts WHERE status = 'active'",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 7,
+      "title": "With CAPTCHA",
+      "type": "stat",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 12,
+        "y": 36
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) FROM pages WHERE has_captcha = true",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "purple",
+            "mode": "fixed"
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 8,
+      "title": "Need Email",
+      "type": "stat",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 16,
+        "y": 36
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) FROM pages WHERE requires_email = true",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 9,
+      "title": "Success Rate",
+      "type": "stat",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 20,
+        "y": 36
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COALESCE(ROUND(100.0 * COUNT(*) FILTER (WHERE success = true) / NULLIF(COUNT(*), 0), 1), 0) FROM registration_attempts",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "green",
+                "value": 80
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value"
+      }
+    }
+  ]
+}

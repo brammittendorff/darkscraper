@@ -3,8 +3,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use dashmap::DashMap;
-use growable_bloom_filter::GrowableBloom;
+use dashmap::{DashMap, DashSet};
 use priority_queue::PriorityQueue;
 use tokio::sync::RwLock;
 use tracing::debug;
@@ -78,8 +77,8 @@ impl NetworkQueue {
 pub struct CrawlFrontier {
     /// Per-network priority queues — workers only pop from their own network
     networks: DashMap<String, Arc<RwLock<NetworkQueue>>>,
-    /// Global bloom filter for URL dedup (shared across all networks)
-    seen_urls: Arc<RwLock<GrowableBloom>>,
+    /// Global URL dedup - lock-free DashSet (was RwLock<GrowableBloom> causing deadlocks)
+    seen_urls: Arc<DashSet<String>>,
     /// Per-host last-request timestamp for politeness
     host_last_seen: DashMap<String, Instant>,
 }
@@ -93,29 +92,24 @@ impl Default for CrawlFrontier {
 impl CrawlFrontier {
     /// Create a new empty frontier.
     pub fn new() -> Self {
-        // GrowableBloom starts small and auto-grows as needed.
-        // target FP rate 0.1% with initial capacity hint of 100k.
-        let bloom = GrowableBloom::new(0.001, 100_000);
-
         Self {
             networks: DashMap::new(),
-            seen_urls: Arc::new(RwLock::new(bloom)),
+            seen_urls: Arc::new(DashSet::new()), // Lock-free! No bloom filter growth deadlocks
             host_last_seen: DashMap::new(),
         }
     }
 
     /// Mark URLs as already seen (for loading from DB at startup).
-    /// Does NOT add them to any queue — just marks them in the bloom filter
+    /// Does NOT add them to any queue — just marks them in the seen set
     /// so they won't be re-crawled.
     pub async fn mark_seen_batch(&self, urls: &[String]) {
-        let mut bloom = self.seen_urls.write().await;
         for url_str in urls {
             if let Ok(url) = Url::parse(url_str) {
                 let normalized = Self::normalize_url(&url);
-                bloom.insert(&normalized);
+                self.seen_urls.insert(normalized);
             } else {
                 // For non-parseable URLs (e.g. hyphanet keys), use as-is
-                bloom.insert(url_str.to_lowercase());
+                self.seen_urls.insert(url_str.to_lowercase());
             }
         }
     }
@@ -215,22 +209,13 @@ impl CrawlFrontier {
         let is_retry = job.retry_count > 0;
         let network = job.network.clone();
 
-        // Skip bloom check for retries — they were already seen but need re-queuing
+        // Skip dedup check for retries — they were already seen but need re-queuing
         if !is_retry {
-            // First check with read lock
-            {
-                let bloom = self.seen_urls.read().await;
-                if bloom.contains(&normalized) {
-                    return false;
-                }
-            }
-            // Then acquire write lock to insert
-            let mut bloom = self.seen_urls.write().await;
-            // Double-check after acquiring write lock (avoid race condition)
-            if bloom.contains(&normalized) {
+            // DashSet.insert returns true if newly inserted (was not present)
+            // If it returns false, the URL was already seen
+            if !self.seen_urls.insert(normalized.clone()) {
                 return false;
             }
-            bloom.insert(&normalized);
         }
 
         let nq = self.get_network_queue(&network);
@@ -246,17 +231,16 @@ impl CrawlFrontier {
             return 0;
         }
 
-        // Partition into retries (bypass bloom) vs fresh URLs
+        // Partition into retries (bypass dedup) vs fresh URLs
         let (retries, fresh): (Vec<_>, Vec<_>) = jobs.into_iter().partition(|j| j.retry_count > 0);
 
-        // Single bloom lock for all fresh URLs
+        // Process fresh URLs with lock-free dedup
         let mut to_enqueue = retries;
         if !fresh.is_empty() {
-            let mut bloom = self.seen_urls.write().await;
             for job in fresh {
                 let normalized = Self::normalize_url(&job.url);
-                if !bloom.contains(&normalized) {
-                    bloom.insert(&normalized);
+                // insert returns true if newly inserted (was not present)
+                if self.seen_urls.insert(normalized) {
                     to_enqueue.push(job);
                 }
             }
@@ -360,10 +344,9 @@ impl CrawlFrontier {
         }
     }
 
-    /// How many URLs have been seen (bloom filter estimate).
+    /// How many URLs have been seen (exact count from DashSet).
     pub async fn seen_count(&self) -> usize {
-        // GrowableBloom doesn't expose count, but we can track it externally if needed
-        0
+        self.seen_urls.len()
     }
 
     /// Add seeds from a list of URL strings.
@@ -384,12 +367,9 @@ impl CrawlFrontier {
                     retry_count: 0,
                 };
 
-                // Add directly to network queue, bypassing bloom check.
+                // Add directly to network queue, bypassing dedup check.
                 // Mark as seen so discovered links TO seeds are deduped.
-                {
-                    let mut bloom = self.seen_urls.write().await;
-                    bloom.insert(&normalized);
-                }
+                self.seen_urls.insert(normalized.clone());
                 let nq = self.get_network_queue(network);
                 let mut queue = nq.write().await;
                 queue.push(normalized, job);

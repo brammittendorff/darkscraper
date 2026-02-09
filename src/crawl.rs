@@ -277,7 +277,9 @@ pub async fn run_crawl(
 
     // Pipeline channels
     // Large channel buffer to prevent blocking (64 workers * 100 = 6400 headroom)
-    let (result_tx, mut result_rx) = mpsc::channel::<CrawlResult>(10000);
+    // Unbounded channel to prevent worker deadlock with high SCALE_LEVEL
+    // With 186 workers discovering 100+ URLs each, bounded channel causes backpressure deadlock
+    let (result_tx, mut result_rx) = mpsc::unbounded_channel::<CrawlResult>();
     let (shutdown_tx, _shutdown_rx) = tokio::sync::broadcast::channel::<()>(1);
 
     // Track which domains we've already probed for infrastructure - lock-free with DashSet
@@ -322,7 +324,7 @@ pub async fn run_crawl(
     let storage_handle = {
         let storage = Arc::clone(&storage);
         let mut shutdown = shutdown_tx.subscribe();
-        let result_tx_monitor = result_tx.clone();
+        let _result_tx_monitor = result_tx.clone();
         tokio::spawn(async move {
             let mut pages_stored = 0u64;
             let mut last_store_time = std::time::Instant::now();
@@ -335,14 +337,9 @@ pub async fn run_crawl(
                                 pages_stored += 1;
                                 last_store_time = std::time::Instant::now();
 
-                                // Warn if channel is getting full (potential deadlock risk)
-                                let capacity = result_tx_monitor.capacity();
-                                if capacity < 1000 {
-                                    warn!(
-                                        capacity,
-                                        pages_stored,
-                                        "storage channel low capacity - DB may be slow"
-                                    );
+                                // Unbounded channel - no capacity monitoring needed
+                                if pages_stored % 100 == 0 {
+                                    info!(pages_stored, "storage progress");
                                 }
 
                                 info!(page_id = id, url = %result.page.url, total = pages_stored, "stored page");
@@ -426,6 +423,101 @@ pub async fn run_crawl(
         }
     }
 
+    // Cookie store for headless browser sessions
+    let cookie_store = Arc::new(darkscraper_core::cookie_store::CookieStore::new());
+
+    // Channel for pages needing headless browser (waiting screens, CAPTCHAs)
+    let (headless_tx, headless_rx) = mpsc::unbounded_channel::<CrawlJob>();
+    let headless_rx = Arc::new(tokio::sync::Mutex::new(headless_rx));
+
+    // Spawn 2 parallel headless workers for waiting screens / DDoS bypass
+    info!("spawning 2 headless browser workers for waiting screens & CAPTCHAs");
+    for headless_id in 0..2 {
+        let mut shutdown = shutdown_tx.subscribe();
+        let cookie_store = Arc::clone(&cookie_store);
+        let result_tx = result_tx.clone();
+        let headless_rx = Arc::clone(&headless_rx);
+        let _drivers = Arc::clone(&drivers);
+        let frontier = Arc::clone(&frontier);
+
+        tokio::spawn(async move {
+            info!(worker_id = headless_id, "headless worker started");
+            loop {
+                tokio::select! {
+                    job = async {
+                        let mut rx = headless_rx.lock().await;
+                        rx.recv().await
+                    } => {
+                        if let Some(job) = job {
+                            let domain = job.url.host_str().unwrap_or("unknown").to_string();
+                            info!(worker_id = headless_id, url = %job.url, domain = %domain, "headless processing waiting screen");
+
+                            // Find the proxy URL for this network
+                            let proxy_url = match job.network.as_str() {
+                                "tor" => "socks5://tor1:9050".to_string(),
+                                "i2p" => "http://i2p1:4444".to_string(),
+                                "lokinet" => "socks5://lokinet1:1080".to_string(),
+                                _ => {
+                                    warn!(worker_id = headless_id, network = %job.network, "no proxy for network, skipping headless");
+                                    continue;
+                                }
+                            };
+
+                            // Check if we already have valid cookies (another worker may have solved it)
+                            if cookie_store.has_cookies(&domain) {
+                                info!(worker_id = headless_id, domain = %domain, "already have cookies, re-queueing for normal fetch");
+                                frontier.push(CrawlJob {
+                                    retry_count: 0,
+                                    priority: job.priority * 1.5,
+                                    ..job
+                                }).await;
+                                continue;
+                            }
+
+                            // Use headless browser to get past the waiting screen
+                            match darkscraper_networks::waiting_handler::fetch_with_headless(
+                                &job.url, &proxy_url, &cookie_store,
+                            ).await {
+                                Ok(resp) => {
+                                    info!(worker_id = headless_id, url = %job.url, size = resp.body.len(), "headless fetch succeeded");
+
+                                    // Parse the rendered page
+                                    match darkscraper_parser::parse_response(&resp) {
+                                        Ok(page) => {
+                                            let correlations = Vec::new();
+                                            let result = CrawlResult { page, correlations };
+                                            if result_tx.send(result).is_err() {
+                                                error!(worker_id = headless_id, "result channel closed");
+                                            }
+                                        }
+                                        Err(e) => {
+                                            warn!(worker_id = headless_id, url = %job.url, "headless parse failed: {}", e);
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    warn!(worker_id = headless_id, url = %job.url, "headless fetch failed: {} - will retry later", e);
+                                    // Re-queue with lower priority for retry
+                                    if job.retry_count < 2 {
+                                        frontier.push(CrawlJob {
+                                            retry_count: job.retry_count + 1,
+                                            priority: job.priority * 0.5,
+                                            ..job
+                                        }).await;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ = shutdown.recv() => {
+                        info!(worker_id = headless_id, "headless worker shutting down");
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
     // Spawn parallel crawl workers
     info!(
         total_workers,
@@ -446,6 +538,7 @@ pub async fn run_crawl(
         let domain_counts = Arc::clone(&domain_page_count);
         let crawl_storage = Arc::clone(&storage);
         let result_tx = result_tx.clone();
+        let headless_tx = headless_tx.clone();
         let mut shutdown = shutdown_tx.subscribe();
         let fetch_config = fetch_config.clone();
 
@@ -624,6 +717,13 @@ pub async fn run_crawl(
                         let domain = url.host_str().unwrap_or("unknown").to_string();
                         let url_path = url.path().to_string();
                         let raw_html = String::from_utf8_lossy(&resp.body);
+
+                        // Check if this is a waiting screen / DDoS protection
+                        if darkscraper_core::waiting_screen::is_waiting_screen(&raw_html, resp.body.len()) {
+                            info!(worker_id, url = %url, size = resp.body.len(), "waiting screen detected - sending to headless workers");
+                            let _ = headless_tx.send(job);
+                            return;
+                        }
 
                         // -- Handle special probe responses --
 
@@ -811,16 +911,9 @@ pub async fn run_crawl(
 
                         // Send to storage with timeout to prevent deadlock
                         let result = CrawlResult { page, correlations };
-                        match tokio::time::timeout(
-                            std::time::Duration::from_secs(30),
-                            result_tx.send(result)
-                        ).await {
-                            Ok(Ok(_)) => {},
-                            Ok(Err(_)) => error!(worker_id, "result channel closed"),
-                            Err(_) => {
-                                warn!(worker_id, url = %url, "storage channel full for 30s, dropping result to prevent deadlock");
-                                // Drop result to prevent deadlock - workers must keep processing
-                            }
+                        // Unbounded channel - send never blocks
+                        if result_tx.send(result).is_err() {
+                            error!(worker_id, "result channel closed");
                         }
                     } => {}
                 }

@@ -1,6 +1,6 @@
 {
   "uid": "darkscraper-search",
-  "title": "Search",
+  "title": "🔎 Search & Discovery",
   "timezone": "browser",
   "schemaVersion": 39,
   "version": 1,
@@ -12,30 +12,129 @@
         "type": "textbox",
         "label": "Search Query",
         "query": "",
-        "current": {"value": "", "text": ""}
+        "current": {
+          "value": "",
+          "text": ""
+        }
       },
       {
         "name": "network_filter",
         "type": "custom",
         "label": "Network",
         "query": "all,tor,i2p,hyphanet,lokinet",
-        "current": {"value": "all", "text": "all"},
+        "current": {
+          "value": "all",
+          "text": "all"
+        },
         "multi": false,
         "includeAll": false
       }
     ]
   },
   "links": [
-    {"title": "Overview", "url": "/d/darkscraper-overview", "type": "link"},
-    {"title": "Monitor", "url": "/d/darkscraper-monitor", "type": "link"},
-    {"title": "Network Analysis", "url": "/d/darkscraper-network-analysis", "type": "link"},
-    {"title": "Correlations", "url": "/d/darkscraper-correlations", "type": "link"}
+    {
+      "title": "Overview",
+      "url": "/d/darkscraper-overview",
+      "type": "link"
+    },
+    {
+      "title": "Monitor",
+      "url": "/d/darkscraper-monitor",
+      "type": "link"
+    },
+    {
+      "title": "Network Analysis",
+      "url": "/d/darkscraper-network-analysis",
+      "type": "link"
+    },
+    {
+      "title": "Correlations",
+      "url": "/d/darkscraper-correlations",
+      "type": "link"
+    }
   ],
   "panels": [
-    {"id": 1, "title": "Search Results in Pages", "type": "table", "gridPos": {"h": 14, "w": 24, "x": 0, "y": 0}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT network, domain, url, title, LEFT(body_text, 200) as preview, to_char(fetched_at, 'YYYY-MM-DD HH24:MI') as crawled FROM pages WHERE (title ILIKE '%${search_query}%' OR body_text ILIKE '%${search_query}%' OR raw_html ILIKE '%${search_query}%') AND ('${network_filter}' = 'all' OR network = '${network_filter}') ORDER BY fetched_at DESC LIMIT 500;", "format": "table", "refId": "A"}], "options": {"showHeader": true}},
-
-    {"id": 2, "title": "Search in Entities", "type": "table", "gridPos": {"h": 10, "w": 24, "x": 0, "y": 14}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT e.entity_type, e.value, p.network, p.domain, p.url, to_char(e.found_at, 'YYYY-MM-DD HH24:MI') as found FROM entities e JOIN pages p ON e.page_id = p.id WHERE e.value ILIKE '%${search_query}%' AND ('${network_filter}' = 'all' OR p.network = '${network_filter}') ORDER BY e.found_at DESC LIMIT 200;", "format": "table", "refId": "A"}], "options": {"showHeader": true}},
-
-    {"id": 3, "title": "Search in Links (Anchor Text)", "type": "table", "gridPos": {"h": 10, "w": 24, "x": 0, "y": 24}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT p.network, p.domain, l.target_url, l.anchor_text FROM links l JOIN pages p ON l.source_page_id = p.id WHERE l.anchor_text ILIKE '%${search_query}%' AND ('${network_filter}' = 'all' OR p.network = '${network_filter}') ORDER BY l.id DESC LIMIT 200;", "format": "table", "refId": "A"}], "options": {"showHeader": true}}
+    {
+      "id": 1,
+      "title": "Search Results in Pages",
+      "type": "table",
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT network, domain, url, title, LEFT(body_text, 200) as preview, to_char(fetched_at, 'YYYY-MM-DD HH24:MI') as crawled FROM pages WHERE (title ILIKE '%${search_query}%' OR body_text ILIKE '%${search_query}%' OR raw_html ILIKE '%${search_query}%') AND ('${network_filter}' = 'all' OR network = '${network_filter}') ORDER BY fetched_at DESC LIMIT 500;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 2,
+      "title": "Search in Entities",
+      "type": "table",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT e.entity_type, e.value, p.network, p.domain, p.url, to_char(e.found_at, 'YYYY-MM-DD HH24:MI') as found FROM entities e JOIN pages p ON e.page_id = p.id WHERE e.value ILIKE '%${search_query}%' AND ('${network_filter}' = 'all' OR p.network = '${network_filter}') ORDER BY e.found_at DESC LIMIT 200;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 3,
+      "title": "Search in Links (Anchor Text)",
+      "type": "table",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT p.network, p.domain, l.target_url, l.anchor_text FROM links l JOIN pages p ON l.source_page_id = p.id WHERE l.anchor_text ILIKE '%${search_query}%' AND ('${network_filter}' = 'all' OR p.network = '${network_filter}') ORDER BY l.id DESC LIMIT 200;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    }
+  ],
+  "tags": [
+    "search",
+    "discovery",
+    "entities",
+    "query",
+    "darkscraper"
   ]
 }

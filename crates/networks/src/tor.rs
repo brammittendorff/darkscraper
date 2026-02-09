@@ -47,6 +47,9 @@ impl TorDriver {
                 .cookie_store(true)
                 .connect_timeout(Duration::from_secs(connect_timeout_seconds))
                 .timeout(Duration::from_secs(request_timeout_seconds))
+                .pool_max_idle_per_host(10)  // Limit idle connections per proxy
+                .pool_idle_timeout(Duration::from_secs(90))  // Close idle connections
+                .tcp_keepalive(Duration::from_secs(60))  // Keep connections alive
                 .cert_verification(false)
                 .build()
             {

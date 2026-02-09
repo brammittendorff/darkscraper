@@ -157,6 +157,10 @@ pub struct PageMetadata {
     pub meta_keywords: Vec<String>,
     pub language: Option<String>,
     pub has_login_form: bool,
+    pub has_register_form: bool,
+    pub has_captcha: bool,
+    pub requires_email: bool,
+    pub is_forum: bool,
     pub has_search_form: bool,
     pub open_graph: HashMap<String, String>,
 }

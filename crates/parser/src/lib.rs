@@ -9,7 +9,7 @@ use url::Url;
 const MAX_PARSE_SIZE: usize = 5 * 1024 * 1024;
 
 /// Extract domain from URL, handling special schemes like Hyphanet
-fn extract_domain(url: &Url) -> String {
+fn _extract_domain(url: &Url) -> String {
     // For standard URLs, use host
     if let Some(host) = url.host_str() {
         return host.to_string();
@@ -104,6 +104,10 @@ pub fn parse_response(resp: &FetchResponse) -> Result<PageData, CrawlError> {
         meta_keywords: html_result.meta_keywords,
         language: html_result.language,
         has_login_form: html_result.has_login_form,
+        has_register_form: html_result.has_register_form,
+        has_captcha: html_result.has_captcha,
+        requires_email: html_result.requires_email,
+        is_forum: html_result.is_forum,
         has_search_form: html_result.has_search_form,
         open_graph: html_result.open_graph,
     };

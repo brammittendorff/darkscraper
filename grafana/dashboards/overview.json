@@ -1,40 +1,599 @@
 {
   "uid": "darkscraper-overview",
-  "title": "Overview",
+  "title": "🏠 Overview Dashboard",
   "timezone": "browser",
   "schemaVersion": 39,
   "version": 1,
   "refresh": "5s",
-  "time": {"from": "now-1h", "to": "now"},
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
   "links": [
-    {"title": "Monitor", "url": "/d/darkscraper-monitor", "type": "link"},
-    {"title": "Network Analysis", "url": "/d/darkscraper-network-analysis", "type": "link"},
-    {"title": "Correlations", "url": "/d/darkscraper-correlations", "type": "link"},
-    {"title": "Search", "url": "/d/darkscraper-search", "type": "link"}
+    {
+      "title": "Monitor",
+      "url": "/d/darkscraper-monitor",
+      "type": "link"
+    },
+    {
+      "title": "Network Analysis",
+      "url": "/d/darkscraper-network-analysis",
+      "type": "link"
+    },
+    {
+      "title": "Correlations",
+      "url": "/d/darkscraper-correlations",
+      "type": "link"
+    },
+    {
+      "title": "Search",
+      "url": "/d/darkscraper-search",
+      "type": "link"
+    }
   ],
   "panels": [
-    {"id": 1, "title": "TOR - Sites", "type": "stat", "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COUNT(*) FROM pages WHERE network = 'tor';", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"color": {"fixedColor": "purple", "mode": "fixed"}}, "overrides": []}},
-    {"id": 2, "title": "TOR - Domains", "type": "stat", "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COUNT(DISTINCT domain) FROM pages WHERE network = 'tor';", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"color": {"fixedColor": "purple", "mode": "fixed"}}, "overrides": []}},
-    {"id": 3, "title": "TOR - Links", "type": "stat", "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COUNT(*) FROM links l JOIN pages p ON l.source_page_id = p.id WHERE p.network = 'tor';", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"color": {"fixedColor": "purple", "mode": "fixed"}}, "overrides": []}},
-    {"id": 4, "title": "TOR - Entities", "type": "stat", "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COUNT(*) FROM entities e JOIN pages p ON e.page_id = p.id WHERE p.network = 'tor';", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"color": {"fixedColor": "purple", "mode": "fixed"}}, "overrides": []}},
-
-    {"id": 5, "title": "I2P - Sites", "type": "stat", "gridPos": {"h": 4, "w": 6, "x": 0, "y": 4}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COUNT(*) FROM pages WHERE network = 'i2p';", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"color": {"fixedColor": "blue", "mode": "fixed"}}, "overrides": []}},
-    {"id": 6, "title": "I2P - Domains", "type": "stat", "gridPos": {"h": 4, "w": 6, "x": 6, "y": 4}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COUNT(DISTINCT domain) FROM pages WHERE network = 'i2p';", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"color": {"fixedColor": "blue", "mode": "fixed"}}, "overrides": []}},
-    {"id": 7, "title": "I2P - Links", "type": "stat", "gridPos": {"h": 4, "w": 6, "x": 12, "y": 4}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COUNT(*) FROM links l JOIN pages p ON l.source_page_id = p.id WHERE p.network = 'i2p';", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"color": {"fixedColor": "blue", "mode": "fixed"}}, "overrides": []}},
-    {"id": 8, "title": "I2P - Entities", "type": "stat", "gridPos": {"h": 4, "w": 6, "x": 18, "y": 4}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COUNT(*) FROM entities e JOIN pages p ON e.page_id = p.id WHERE p.network = 'i2p';", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"color": {"fixedColor": "blue", "mode": "fixed"}}, "overrides": []}},
-
-    {"id": 9, "title": "HYPHANET - Sites", "type": "stat", "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COUNT(*) FROM pages WHERE network = 'hyphanet';", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"color": {"fixedColor": "yellow", "mode": "fixed"}}, "overrides": []}},
-    {"id": 10, "title": "HYPHANET - Domains", "type": "stat", "gridPos": {"h": 4, "w": 6, "x": 6, "y": 8}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COUNT(DISTINCT domain) FROM pages WHERE network = 'hyphanet';", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"color": {"fixedColor": "yellow", "mode": "fixed"}}, "overrides": []}},
-    {"id": 11, "title": "HYPHANET - Links", "type": "stat", "gridPos": {"h": 4, "w": 6, "x": 12, "y": 8}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COALESCE(COUNT(*), 0) FROM links l JOIN pages p ON l.source_page_id = p.id WHERE p.network = 'hyphanet';", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"color": {"fixedColor": "yellow", "mode": "fixed"}}, "overrides": []}},
-    {"id": 12, "title": "HYPHANET - Entities", "type": "stat", "gridPos": {"h": 4, "w": 6, "x": 18, "y": 8}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COALESCE(COUNT(*), 0) FROM entities e JOIN pages p ON e.page_id = p.id WHERE p.network = 'hyphanet';", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"color": {"fixedColor": "yellow", "mode": "fixed"}}, "overrides": []}},
-
-    {"id": 13, "title": "LOKINET - Sites", "type": "stat", "gridPos": {"h": 4, "w": 6, "x": 0, "y": 12}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COUNT(*) FROM pages WHERE network = 'lokinet';", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"color": {"fixedColor": "green", "mode": "fixed"}}, "overrides": []}},
-    {"id": 14, "title": "LOKINET - Domains", "type": "stat", "gridPos": {"h": 4, "w": 6, "x": 6, "y": 12}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COUNT(DISTINCT domain) FROM pages WHERE network = 'lokinet';", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"color": {"fixedColor": "green", "mode": "fixed"}}, "overrides": []}},
-    {"id": 15, "title": "LOKINET - Links", "type": "stat", "gridPos": {"h": 4, "w": 6, "x": 12, "y": 12}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COUNT(*) FROM links l JOIN pages p ON l.source_page_id = p.id WHERE p.network = 'lokinet';", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"color": {"fixedColor": "green", "mode": "fixed"}}, "overrides": []}},
-    {"id": 16, "title": "LOKINET - Entities", "type": "stat", "gridPos": {"h": 4, "w": 6, "x": 18, "y": 12}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "SELECT COUNT(*) FROM entities e JOIN pages p ON e.page_id = p.id WHERE p.network = 'lokinet';", "format": "table", "refId": "A"}], "fieldConfig": {"defaults": {"color": {"fixedColor": "green", "mode": "fixed"}}, "overrides": []}},
-
-    {"id": 21, "title": "Sites Crawled Over Time", "type": "timeseries", "gridPos": {"h": 10, "w": 24, "x": 0, "y": 16}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "WITH all_minutes AS (SELECT DISTINCT date_trunc('minute', fetched_at) as time FROM pages), all_networks AS (SELECT unnest(ARRAY['tor', 'i2p', 'hyphanet', 'lokinet']) as network) SELECT m.time, n.network, COALESCE(COUNT(p.id), 0) as value FROM all_minutes m CROSS JOIN all_networks n LEFT JOIN pages p ON p.network = n.network AND date_trunc('minute', p.fetched_at) = m.time GROUP BY m.time, n.network ORDER BY m.time, n.network;", "format": "time_series", "refId": "A"}], "fieldConfig": {"defaults": {"custom": {"lineWidth": 2, "drawStyle": "line", "lineInterpolation": "linear", "showPoints": "never"}, "color": {"mode": "palette-classic"}}, "overrides": []}},
-
-    {"id": 22, "title": "Last Hour Activity", "type": "table", "gridPos": {"h": 6, "w": 24, "x": 0, "y": 26}, "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"}, "targets": [{"rawSql": "WITH networks AS (SELECT unnest(ARRAY['tor', 'i2p', 'hyphanet', 'lokinet']) as network) SELECT n.network, COALESCE(COUNT(p.id), 0) as pages_last_hour, COALESCE(COUNT(DISTINCT p.domain), 0) as new_domains, COALESCE((SELECT COUNT(*) FROM links l JOIN pages pp ON l.source_page_id = pp.id WHERE pp.network = n.network AND pp.fetched_at > NOW() - INTERVAL '1 hour'), 0) as links_found, COALESCE(to_char(MAX(p.fetched_at), 'HH24:MI:SS'), 'Inactive') as last_active FROM networks n LEFT JOIN pages p ON p.network = n.network AND p.fetched_at > NOW() - INTERVAL '1 hour' GROUP BY n.network ORDER BY pages_last_hour DESC;", "format": "table", "refId": "A"}], "options": {"showHeader": true}}
+    {
+      "id": 1,
+      "title": "TOR - Sites",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) FROM pages WHERE network = 'tor';",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "purple",
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "title": "TOR - Domains",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(DISTINCT domain) FROM pages WHERE network = 'tor';",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "purple",
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "title": "TOR - Links",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) FROM links l JOIN pages p ON l.source_page_id = p.id WHERE p.network = 'tor';",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "purple",
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "title": "TOR - Entities",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) FROM entities e JOIN pages p ON e.page_id = p.id WHERE p.network = 'tor';",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "purple",
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "title": "I2P - Sites",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) FROM pages WHERE network = 'i2p';",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "title": "I2P - Domains",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(DISTINCT domain) FROM pages WHERE network = 'i2p';",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "title": "I2P - Links",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) FROM links l JOIN pages p ON l.source_page_id = p.id WHERE p.network = 'i2p';",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "title": "I2P - Entities",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) FROM entities e JOIN pages p ON e.page_id = p.id WHERE p.network = 'i2p';",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "title": "HYPHANET - Sites",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) FROM pages WHERE network = 'hyphanet';",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "yellow",
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "title": "HYPHANET - Domains",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(DISTINCT domain) FROM pages WHERE network = 'hyphanet';",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "yellow",
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "title": "HYPHANET - Links",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COALESCE(COUNT(*), 0) FROM links l JOIN pages p ON l.source_page_id = p.id WHERE p.network = 'hyphanet';",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "yellow",
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 12,
+      "title": "HYPHANET - Entities",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COALESCE(COUNT(*), 0) FROM entities e JOIN pages p ON e.page_id = p.id WHERE p.network = 'hyphanet';",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "yellow",
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 13,
+      "title": "LOKINET - Sites",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 12
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) FROM pages WHERE network = 'lokinet';",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 14,
+      "title": "LOKINET - Domains",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 12
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(DISTINCT domain) FROM pages WHERE network = 'lokinet';",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 15,
+      "title": "LOKINET - Links",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 12
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) FROM links l JOIN pages p ON l.source_page_id = p.id WHERE p.network = 'lokinet';",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 16,
+      "title": "LOKINET - Entities",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 12
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) FROM entities e JOIN pages p ON e.page_id = p.id WHERE p.network = 'lokinet';",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 21,
+      "title": "Sites Crawled Over Time",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "WITH all_minutes AS (SELECT DISTINCT date_trunc('minute', fetched_at) as time FROM pages), all_networks AS (SELECT unnest(ARRAY['tor', 'i2p', 'hyphanet', 'lokinet']) as network) SELECT m.time, n.network, COALESCE(COUNT(p.id), 0) as value FROM all_minutes m CROSS JOIN all_networks n LEFT JOIN pages p ON p.network = n.network AND date_trunc('minute', p.fetched_at) = m.time GROUP BY m.time, n.network ORDER BY m.time, n.network;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "showPoints": "never"
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 22,
+      "title": "Last Hour Activity",
+      "type": "table",
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "darkscraper-pg"
+      },
+      "targets": [
+        {
+          "rawSql": "WITH networks AS (SELECT unnest(ARRAY['tor', 'i2p', 'hyphanet', 'lokinet']) as network) SELECT n.network, COALESCE(COUNT(p.id), 0) as pages_last_hour, COALESCE(COUNT(DISTINCT p.domain), 0) as new_domains, COALESCE((SELECT COUNT(*) FROM links l JOIN pages pp ON l.source_page_id = pp.id WHERE pp.network = n.network AND pp.fetched_at > NOW() - INTERVAL '1 hour'), 0) as links_found, COALESCE(to_char(MAX(p.fetched_at), 'HH24:MI:SS'), 'Inactive') as last_active FROM networks n LEFT JOIN pages p ON p.network = n.network AND p.fetched_at > NOW() - INTERVAL '1 hour' GROUP BY n.network ORDER BY pages_last_hour DESC;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    }
+  ],
+  "tags": [
+    "overview",
+    "general",
+    "networks",
+    "darkscraper"
   ]
 }
