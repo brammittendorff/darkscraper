@@ -278,7 +278,10 @@ services:
   # Privileged mode required for TUN interface creation and networking
   lokinet1:
     build: ./docker/lokinet-socks
-    privileged: true
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
     volumes:
       - lokinet1data:/var/lib/lokinet
     healthcheck:
@@ -290,7 +293,10 @@ services:
 
   lokinet2:
     build: ./docker/lokinet-socks
-    privileged: true
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
     volumes:
       - lokinet2data:/var/lib/lokinet
     healthcheck:
@@ -302,7 +308,10 @@ services:
 
   lokinet3:
     build: ./docker/lokinet-socks
-    privileged: true
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
     volumes:
       - lokinet3data:/var/lib/lokinet
     healthcheck:
@@ -314,7 +323,10 @@ services:
 
   lokinet4:
     build: ./docker/lokinet-socks
-    privileged: true
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
     volumes:
       - lokinet4data:/var/lib/lokinet
     healthcheck:
@@ -326,7 +338,10 @@ services:
 
   lokinet5:
     build: ./docker/lokinet-socks
-    privileged: true
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
     volumes:
       - lokinet5data:/var/lib/lokinet
     healthcheck:

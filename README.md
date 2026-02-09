@@ -95,16 +95,13 @@ This launches:
 - 3 Tor instances (SOCKS5 proxies)
 - 3 Java I2P instances (HTTP proxies + router console)
 - 3 Hyphanet instances
-- 3 Lokinet instances (privileged mode for TUN interface)
+- 3 Lokinet instances (CAP_NET_ADMIN for TUN interface)
 - Grafana dashboard (http://localhost:3000)
 - DarkScraper crawler
 
 3. **Wait for I2P bootstrap** (10-15 minutes for first startup):
 ```bash
-# Monitor I2P bootstrap progress
-./monitor_i2p.sh
-
-# Or check logs
+# Check logs to monitor I2P bootstrap progress
 docker compose logs i2p1 -f
 ```
 
@@ -115,47 +112,44 @@ docker compose logs -f darkscraper
 
 ### Performance Scaling
 
-Use `SCALE_LEVEL` (1-5) for automatic balanced scaling:
+Use `SCALE_LEVEL` (1-5) with `./start.sh` for automatic balanced scaling:
 
 ```bash
-# Level 1: Minimal (6GB RAM, 4 cores) - ~200 pages/hour
-SCALE_LEVEL=1 docker compose up -d
+# Level 1: Minimal (6GB RAM, 4 cores) - ~2,000 pages/hour
+SCALE_LEVEL=1 ./start.sh
 
-# Level 2: Light (12GB RAM, 8 cores) - ~600 pages/hour
-SCALE_LEVEL=2 docker compose up -d
+# Level 2: Light (12GB RAM, 8 cores) - ~6,000 pages/hour
+SCALE_LEVEL=2 ./start.sh
 
-# Level 3: Standard [DEFAULT] (18GB RAM, 12 cores) - ~1200 pages/hour
-SCALE_LEVEL=3 docker compose up -d
+# Level 3: Standard [DEFAULT] (18GB RAM, 12 cores) - ~12,000 pages/hour
+SCALE_LEVEL=3 ./start.sh
 
-# Level 4: Performance (28GB RAM, 16 cores) - ~2500 pages/hour
-SCALE_LEVEL=4 docker compose --profile tor-extra --profile i2p-extra \
-  --profile hyphanet-extra --profile lokinet-extra up -d
+# Level 4: Performance (28GB RAM, 16 cores) - ~25,000 pages/hour
+SCALE_LEVEL=4 ./start.sh
 
-# Level 5: Maximum (40GB RAM, 24 cores) - ~4000 pages/hour
-SCALE_LEVEL=5 docker compose --profile tor-extra --profile i2p-extra \
-  --profile hyphanet-extra --profile lokinet-extra up -d
+# Level 5: Maximum (40GB RAM, 24 cores) - ~40,000+ pages/hour
+SCALE_LEVEL=5 ./start.sh
 ```
 
-Each level automatically sets instances and workers proportionally based on network characteristics.
-See `SCALING.md` for detailed breakdown.
+`start.sh` automatically generates extra instances and sets progressive timeouts.
 
 ## Network-Specific Information
 
 ### Tor
-- **Bootstrap Time**: 30-60 seconds
+- **Bootstrap Time**: 10-20 seconds ⚡
 - **Proxy Type**: SOCKS5 on port 9050
 - **Address Format**: 56-character base32 `.onion` (v3 only)
-- **Status**: Always ready immediately
+- **Status**: Ready almost immediately
 
 ### I2P (Java Router)
-- **Bootstrap Time**: 10-15 minutes (first start), 5-10 minutes (subsequent)
+- **Bootstrap Time**: 10-15 minutes (first start), ~3 minutes (subsequent) ⚡
 - **Proxy Type**: HTTP on port 4444
 - **Address Formats**:
   - Human-readable: `notbob.i2p` (addressbook)
   - Cryptographic: `[52-56 chars].b32.i2p`
 - **Auto-Discovery**: Crawler automatically extracts base32 addresses from headers and HTML
 - **Router Console**: Port 7657 (not exposed by default)
-- **Status Check**: See `docker/i2p/README.md` and `QUICKSTART_I2P.md`
+- **Status Check**: See `docker/i2p/README.md`
 
 ### ~~ZeroNet~~ (DISABLED)
 - **Status**: Network dead as of February 2026
@@ -164,19 +158,19 @@ See `SCALING.md` for detailed breakdown.
 - If network recovers, can be re-enabled by setting `enabled = true` in `config/default.toml`
 
 ### Hyphanet (formerly Freenet)
-- **Bootstrap Time**: 2-3 minutes
+- **Bootstrap Time**: 1-2 minutes ⚡ (was 2-3 minutes with old build)
 - **Proxy Type**: HTTP on port 8888 (FProxy)
 - **Address Formats**: `USK@`, `SSK@`, `CHK@` with base64-encoded keys
 - **Note**: All Hyphanet addresses are cryptographic (no human-readable aliases)
-- **Timeout**: 300 seconds (network is very slow)
+- **Timeouts**: Progressive 30s/60s/120s/180s (network is very slow, patient retry strategy)
 
 ### Lokinet
-- **Bootstrap Time**: 1-2 minutes
+- **Bootstrap Time**: 30-60 seconds ⚡
 - **Proxy Type**: SOCKS5 on port 1080
 - **Address Formats**:
   - Cryptographic: 52-character `.loki` addresses
   - Human-readable: ONS names like `minecraft.loki`
-- **Requirements**: Privileged mode for TUN interface
+- **Requirements**: `CAP_NET_ADMIN` + `/dev/net/tun` device (required for TUN interface - elevated privileges)
 - **Status Check**: `dig @127.3.2.1 exit.loki`
 
 ## Configuration
@@ -398,8 +392,7 @@ darkscraper/
 ├── grafana/               # Grafana dashboards
 │   ├── provisioning/     # Auto-provisioning
 │   └── dashboards/       # Network-specific dashboards
-├── monitor_i2p.sh         # I2P monitoring script
-├── QUICKSTART_I2P.md      # I2P setup guide
+├── start.sh               # Simple SCALE_LEVEL startup script
 └── docker-compose.yml
 ```
 
@@ -409,17 +402,16 @@ darkscraper/
 
 ```bash
 # Start with minimal resources
-SCALE_LEVEL=1 docker compose up -d
+SCALE_LEVEL=1 ./start.sh
 
 # Production setup with good performance
-SCALE_LEVEL=3 docker compose up -d
+SCALE_LEVEL=3 ./start.sh
 
-# Maximum performance (requires --profile flags for 5+ instances)
-SCALE_LEVEL=5 docker compose --profile tor-extra --profile i2p-extra \
-  --profile hyphanet-extra --profile lokinet-extra up -d
+# Maximum performance
+SCALE_LEVEL=5 ./start.sh
 ```
 
-See `SCALING.md` for detailed performance analysis and resource requirements.
+`start.sh` handles instance generation and configuration automatically.
 
 ### Resource Requirements
 
@@ -481,12 +473,15 @@ See `docker/i2p/README.md` and `QUICKSTART_I2P.md` for detailed I2P setup.
 
 ### Lokinet Failing to Start
 
-Lokinet requires privileged mode. Ensure Docker has the necessary permissions:
+Lokinet requires `CAP_NET_ADMIN` capability and `/dev/net/tun` device:
 ```bash
 docker compose logs lokinet1
 
 # Check if TUN interface is created
 docker compose exec lokinet1 ip addr show tun0
+
+# If failing, ensure /dev/net/tun exists on host
+ls -l /dev/net/tun
 ```
 
 ### Database Connection Errors
