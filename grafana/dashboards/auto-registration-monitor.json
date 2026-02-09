@@ -1,0 +1,308 @@
+{
+  "title": "🤖 Auto-Registration Monitor",
+  "uid": "auto-registration-monitor",
+  "tags": ["auto-register", "monitoring", "real-time"],
+  "timezone": "browser",
+  "schemaVersion": 36,
+  "version": 1,
+  "refresh": "10s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Registration Success Rate (Last Hour)",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"},
+      "targets": [{
+        "rawSql": "SELECT \n  ROUND(100.0 * COUNT(*) FILTER (WHERE success = true) / NULLIF(COUNT(*), 0), 1) as success_rate\nFROM registration_attempts\nWHERE attempted_at > NOW() - INTERVAL '1 hour'",
+        "format": "table"
+      }],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "reduceOptions": {"values": false, "calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"value": 0, "color": "red"},
+              {"value": 40, "color": "orange"},
+              {"value": 70, "color": "green"}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Total Registrations (Last Hour)",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"},
+      "targets": [{
+        "rawSql": "SELECT COUNT(*) as total FROM registration_attempts WHERE attempted_at > NOW() - INTERVAL '1 hour'",
+        "format": "table"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"value": 0, "color": "blue"},
+              {"value": 10, "color": "green"}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Successful Accounts",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"},
+      "targets": [{
+        "rawSql": "SELECT COUNT(*) FROM registered_accounts WHERE status = 'active'",
+        "format": "table"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "green"}
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Failed Attempts (Last Hour)",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"},
+      "targets": [{
+        "rawSql": "SELECT COUNT(*) FROM registration_attempts WHERE success = false AND attempted_at > NOW() - INTERVAL '1 hour'",
+        "format": "table"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "red"}
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Registrations Over Time",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 6},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"},
+      "targets": [
+        {
+          "rawSql": "SELECT \n  DATE_TRUNC('minute', attempted_at) as time,\n  COUNT(*) FILTER (WHERE success = true) as \"Successful\",\n  COUNT(*) FILTER (WHERE success = false) as \"Failed\"\nFROM registration_attempts\nWHERE attempted_at > NOW() - INTERVAL '1 hour'\nGROUP BY time\nORDER BY time",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2}
+        },
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "Successful"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "green"}}]},
+          {"matcher": {"id": "byName", "options": "Failed"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]}
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "title": "Registration by Network",
+      "type": "piechart",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 14},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"},
+      "targets": [{
+        "rawSql": "SELECT network, COUNT(*) as count FROM registered_accounts GROUP BY network",
+        "format": "table"
+      }],
+      "options": {
+        "legend": {"displayMode": "table", "placement": "right", "values": ["value", "percent"]}
+      }
+    },
+    {
+      "id": 7,
+      "title": "Failure Reasons (Last Hour)",
+      "type": "bargauge",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 14},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"},
+      "targets": [{
+        "rawSql": "SELECT \n  CASE \n    WHEN error_message ILIKE '%timeout%' THEN 'Timeout'\n    WHEN error_message ILIKE '%captcha%' THEN 'CAPTCHA'\n    WHEN error_message ILIKE '%password%' THEN 'Password Issues'\n    WHEN error_message ILIKE '%exists%' OR error_message ILIKE '%taken%' THEN 'Username Taken'\n    WHEN error_message ILIKE '%form%' THEN 'Form Not Found'\n    ELSE 'Other'\n  END as reason,\n  COUNT(*) as count\nFROM registration_attempts\nWHERE success = false \n  AND attempted_at > NOW() - INTERVAL '1 hour'\n  AND error_message IS NOT NULL\nGROUP BY reason\nORDER BY count DESC",
+        "format": "table"
+      }],
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient"
+      }
+    },
+    {
+      "id": 8,
+      "title": "CAPTCHA Encounter Rate",
+      "type": "stat",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 14},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"},
+      "targets": [{
+        "rawSql": "SELECT \n  ROUND(100.0 * COUNT(*) FILTER (WHERE captcha_required = true) / NULLIF(COUNT(*), 0), 1) as captcha_rate\nFROM registration_attempts\nWHERE attempted_at > NOW() - INTERVAL '1 hour'",
+        "format": "table"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"value": 0, "color": "green"},
+              {"value": 30, "color": "orange"},
+              {"value": 60, "color": "red"}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Recent Registration Attempts",
+      "type": "table",
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 22},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"},
+      "targets": [{
+        "rawSql": "SELECT \n  site_domain as Domain,\n  username as Username,\n  network as Network,\n  CASE WHEN success THEN '✓ Success' ELSE '✗ Failed' END as Result,\n  CASE WHEN captcha_required THEN '🤖 Yes' ELSE '✓ No' END as CAPTCHA,\n  COALESCE(error_message, 'N/A') as Error,\n  attempted_at as \"Attempted At\",\n  EXTRACT(EPOCH FROM (NOW() - attempted_at)) || 's ago' as \"Time Ago\"\nFROM registration_attempts\nORDER BY attempted_at DESC\nLIMIT 50",
+        "format": "table"
+      }],
+      "options": {
+        "showHeader": true,
+        "sortBy": [{"displayName": "Attempted At", "desc": true}]
+      }
+    },
+    {
+      "id": 10,
+      "title": "Domains with Most Accounts",
+      "type": "table",
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 34},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"},
+      "targets": [{
+        "rawSql": "SELECT \n  site_domain as Domain,\n  network as Network,\n  COUNT(*) as \"Account Count\",\n  COUNT(*) FILTER (WHERE status = 'active') as Active,\n  COUNT(*) FILTER (WHERE status = 'banned') as Banned,\n  MAX(registered_at) as \"Last Registered\"\nFROM registered_accounts\nGROUP BY site_domain, network\nORDER BY COUNT(*) DESC\nLIMIT 20",
+        "format": "table"
+      }]
+    },
+    {
+      "id": 11,
+      "title": "Email Verification Status",
+      "type": "piechart",
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 34},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"},
+      "targets": [{
+        "rawSql": "SELECT \n  CASE \n    WHEN email_verified THEN 'Verified'\n    WHEN email IS NOT NULL THEN 'Pending Verification'\n    ELSE 'No Email Required'\n  END as status,\n  COUNT(*) as count\nFROM registered_accounts\nGROUP BY status",
+        "format": "table"
+      }]
+    },
+    {
+      "id": 12,
+      "title": "Registration Time Distribution (Minutes)",
+      "type": "bargauge",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 44},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"},
+      "targets": [{
+        "rawSql": "SELECT \n  CASE \n    WHEN EXTRACT(EPOCH FROM (NOW() - attempted_at)) < 300 THEN '0-5 min'\n    WHEN EXTRACT(EPOCH FROM (NOW() - attempted_at)) < 600 THEN '5-10 min'\n    WHEN EXTRACT(EPOCH FROM (NOW() - attempted_at)) < 1800 THEN '10-30 min'\n    WHEN EXTRACT(EPOCH FROM (NOW() - attempted_at)) < 3600 THEN '30-60 min'\n    ELSE '60+ min'\n  END as time_bucket,\n  COUNT(*) as count\nFROM registration_attempts\nWHERE attempted_at > NOW() - INTERVAL '2 hours'\nGROUP BY time_bucket\nORDER BY time_bucket",
+        "format": "table"
+      }]
+    },
+    {
+      "id": 13,
+      "title": "Active Account Health",
+      "type": "table",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 44},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"},
+      "targets": [{
+        "rawSql": "SELECT \n  site_domain as Domain,\n  username as Username,\n  status as Status,\n  CASE \n    WHEN last_login_at IS NULL THEN 'Never'\n    ELSE EXTRACT(EPOCH FROM (NOW() - last_login_at)) || 's ago'\n  END as \"Last Login\",\n  EXTRACT(EPOCH FROM (NOW() - registered_at)) || 's ago' as Age\nFROM registered_accounts\nWHERE status = 'active'\nORDER BY registered_at DESC\nLIMIT 30",
+        "format": "table"
+      }]
+    },
+    {
+      "id": 14,
+      "title": "Hourly Registration Rate",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 52},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"},
+      "targets": [{
+        "rawSql": "SELECT COUNT(*) as rate FROM registration_attempts WHERE attempted_at > NOW() - INTERVAL '1 hour'",
+        "format": "table"
+      }],
+      "options": {
+        "textMode": "value_and_name",
+        "colorMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "attempts/hour",
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "steps": [
+              {"value": 0, "color": "red"},
+              {"value": 5, "color": "yellow"},
+              {"value": 10, "color": "green"}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 15,
+      "title": "Avg Time per Registration",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 52},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"},
+      "targets": [{
+        "rawSql": "SELECT AVG(EXTRACT(EPOCH FROM (NOW() - attempted_at))) as avg_time FROM registration_attempts WHERE attempted_at > NOW() - INTERVAL '1 hour'",
+        "format": "table"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0
+        }
+      }
+    },
+    {
+      "id": 16,
+      "title": "Forms Detected (Pending Registration)",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 52},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"},
+      "targets": [{
+        "rawSql": "SELECT COUNT(DISTINCT p.domain) FROM pages p LEFT JOIN registered_accounts ra ON p.domain = ra.site_domain WHERE p.has_register_form = true AND ra.id IS NULL",
+        "format": "table"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "sites",
+          "color": {"mode": "fixed", "fixedColor": "blue"}
+        }
+      }
+    },
+    {
+      "id": 17,
+      "title": "Network Health",
+      "type": "table",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 52},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "darkscraper-pg"},
+      "targets": [{
+        "rawSql": "SELECT \n  network as Network,\n  ROUND(100.0 * COUNT(*) FILTER (WHERE success = true) / NULLIF(COUNT(*), 0), 0) || '%' as \"Success Rate\"\nFROM registration_attempts\nWHERE attempted_at > NOW() - INTERVAL '1 hour'\nGROUP BY network\nORDER BY network",
+        "format": "table"
+      }]
+    }
+  ]
+}
