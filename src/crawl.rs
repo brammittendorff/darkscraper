@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use dashmap::{DashMap, DashSet};
 use tokio::signal;
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
 use darkscraper_core::{AppConfig, CrawlJob, FetchConfig, NetworkDriver, PageData};
