@@ -269,18 +269,8 @@ impl AutoRegister {
 
     /// Generate random registration data
     fn generate_registration_data(opportunity: &RegistrationOpportunity) -> RegistrationData {
-        use rand::Rng;
-        use rand::distributions::Alphanumeric;
-
-        let mut rng = rand::thread_rng();
-
-        // Generate random username (8-12 chars)
-        let username_len = rng.gen_range(8..13);
-        let username: String = std::iter::repeat(())
-            .map(|()| rng.sample(Alphanumeric))
-            .map(char::from)
-            .take(username_len)
-            .collect();
+        // Generate realistic username with English words
+        let username = crate::email::generate_random_username();
 
         // Generate strong password
         let password = Self::generate_strong_password();

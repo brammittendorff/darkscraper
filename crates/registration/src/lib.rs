@@ -5,14 +5,18 @@ pub mod adapters;
 pub mod orchestrator;
 pub mod auto_register;
 pub mod auto_register_inline;
+pub mod login_verifier;
+pub mod email_verifier;
+pub mod verification_helpers;
+pub mod email_provider_priority;
 
-// Legacy modules (will be phased out or refactored)
+// Legacy modules (deprecated - use new system)
 pub mod browser;
 pub mod captcha;
 pub mod captcha_free;
 pub mod email;
 pub mod form_filler;
-pub mod registrar;
+// pub mod registrar;  // DEPRECATED - use orchestrator::RegistrationEngine
 pub mod multilingual;
 pub mod temp_email_providers;
 
@@ -25,6 +29,8 @@ pub use adapters::*;
 pub use orchestrator::*;
 pub use auto_register::*;
 pub use auto_register_inline::*;
+pub use login_verifier::*;
+pub use email_verifier::*;
 
 
 #[derive(Debug, Clone)]

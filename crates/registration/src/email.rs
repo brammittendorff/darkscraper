@@ -8,18 +8,46 @@ pub fn generate_temp_email(domain: &str) -> String {
     format!("{}@{}", username, domain)
 }
 
-/// Generate a random username (8-12 chars, alphanumeric)
+/// Generate a random username from English words (like happy_cloud, blue_tiger)
 pub fn generate_random_username() -> String {
-    let mut rng = rand::thread_rng();
-    let length = rng.gen_range(8..=12);
+    use rand::seq::SliceRandom;
 
-    let charset: Vec<char> = "abcdefghijklmnopqrstuvwxyz0123456789".chars().collect();
-    (0..length)
-        .map(|_| {
-            let idx = rng.gen_range(0..charset.len());
-            charset[idx]
-        })
-        .collect()
+    let mut rng = rand::thread_rng();
+
+    // Adjectives
+    let adjectives = [
+        "happy", "blue", "fast", "bright", "cool", "dark", "brave", "calm", "wise", "bold",
+        "quick", "silent", "strong", "gentle", "wild", "free", "clever", "friendly", "honest",
+        "kind", "lucky", "mighty", "noble", "proud", "royal", "safe", "swift", "true", "warm",
+        "active", "ancient", "cosmic", "digital", "electric", "golden", "hidden", "instant",
+        "magic", "mystic", "neon", "omega", "phantom", "quantum", "rapid", "secret", "silver",
+        "sonic", "stellar", "super", "turbo", "ultra", "virtual", "zero",
+    ];
+
+    // Nouns
+    let nouns = [
+        "cloud", "tiger", "river", "mountain", "ocean", "forest", "desert", "island", "valley",
+        "dragon", "eagle", "wolf", "bear", "lion", "hawk", "fox", "deer", "whale", "dolphin",
+        "knight", "warrior", "wizard", "hunter", "guardian", "shadow", "phantom", "spirit",
+        "storm", "thunder", "lightning", "fire", "wind", "earth", "star", "moon", "sun",
+        "crystal", "diamond", "emerald", "ruby", "sapphire", "jade", "pearl", "amber",
+        "code", "byte", "pixel", "cyber", "matrix", "nexus", "vortex", "zenith", "apex",
+        "arrow", "blade", "crown", "dream", "flame", "ghost", "heart", "key", "light",
+    ];
+
+    let adj = adjectives.choose(&mut rng).unwrap();
+    let noun = nouns.choose(&mut rng).unwrap();
+
+    // Random separator and optional number
+    let separator = if rng.gen_bool(0.7) { "_" } else { "" };
+    let add_number = rng.gen_bool(0.3);
+
+    if add_number {
+        let num = rng.gen_range(1..9999);
+        format!("{}{}{}{}", adj, separator, noun, num)
+    } else {
+        format!("{}{}{}", adj, separator, noun)
+    }
 }
 
 /// Generate a strong random password

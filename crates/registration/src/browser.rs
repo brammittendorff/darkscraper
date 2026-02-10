@@ -265,6 +265,44 @@ impl HeadlessBrowser {
         info!("screenshot saved to {}", path);
         Ok(())
     }
+
+    /// Capture CAPTCHA image from browser (avoids proxy download issues)
+    pub fn capture_captcha_image(&self, tab: &Tab, selector: &str) -> Result<Vec<u8>, RegistrationError> {
+        // Try to find and screenshot the CAPTCHA image element
+        let result = tab.evaluate(
+            &format!(
+                r#"
+                const img = document.querySelector('{}');
+                if (img) {{
+                    const rect = img.getBoundingClientRect();
+                    JSON.stringify({{
+                        x: rect.x,
+                        y: rect.y,
+                        width: rect.width,
+                        height: rect.height
+                    }});
+                }} else {{
+                    null;
+                }}
+                "#,
+                selector
+            ),
+            false,
+        )
+        .map_err(|e| RegistrationError::BrowserError(e.to_string()))?;
+
+        // For now, just take full screenshot
+        // TODO: Crop to element bounds
+        let screenshot_data = tab.capture_screenshot(
+            headless_chrome::protocol::cdp::Page::CaptureScreenshotFormatOption::Png,
+            None,
+            None,
+            true,
+        )
+        .map_err(|e| RegistrationError::BrowserError(e.to_string()))?;
+
+        Ok(screenshot_data)
+    }
 }
 
 /// Detect if a page has a waiting screen

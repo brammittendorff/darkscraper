@@ -98,15 +98,52 @@ impl RegistrationEngine {
             }
         }
 
+        // Get the latest HTML (after possible register link click)
+        let current_html = browser.get_rendered_html(&tab)?;
+
+        // Detect CAPTCHA - track this at function scope
+        let captcha_info = crate::captcha::CaptchaSolver::detect_captcha(&current_html, url);
+        let mut captcha_encountered = captcha_info.captcha_type != crate::captcha::CaptchaType::None;
+        let mut captcha_was_solved = false;
+
+        if captcha_encountered {
+            info!("🤖 CAPTCHA detected: {:?}", captcha_info.captcha_type);
+            context.transition(
+                RegistrationState::SolvingCaptcha { captcha_type: format!("{:?}", captcha_info.captcha_type) },
+                Some(format!("Solving {:?}", captcha_info.captcha_type)),
+            );
+
+            // Solve CAPTCHA using free solver
+            if let Some(ref solver) = self.config.captcha_service {
+                match crate::captcha::CaptchaSolver::new(solver.clone()).solve_captcha(&captcha_info, url, proxy_url).await {
+                    Ok(solution) => {
+                        info!("✓ CAPTCHA solved: {}", solution);
+                        // Store solution in context for form filling
+                        context.data.captcha_solution = Some(solution);
+                        captcha_was_solved = true;  // Mark as solved
+                    }
+                    Err(e) => {
+                        warn!("✗ CAPTCHA solve failed: {}", e);
+                        captcha_was_solved = false;
+                        // Continue anyway - some sites accept without CAPTCHA
+                    }
+                }
+            }
+        } else {
+            // No CAPTCHA detected
+            captcha_encountered = false;
+            captcha_was_solved = false;
+        }
+
         // Detect form
         context.transition(RegistrationState::DetectingForm, Some("Analyzing page for forms".to_string()));
 
-        let form_info = match self.adapter.detect_form(&html, url).await {
+        let form_info = match self.adapter.detect_form(&current_html, url).await {
             Ok(form) => form,
             Err(e) => {
                 error!("Failed to detect form: {}", e);
 
-                // Save failed attempt to database
+                // Save failed attempt to database (no CAPTCHA at this stage - form not found)
                 let error = crate::RegistrationError::FormNotFound;
                 if let Err(db_err) = storage.record_registration_attempt(
                     url,
@@ -114,7 +151,7 @@ impl RegistrationEngine {
                     &Self::detect_network(url),
                     Some(&context.data.username),
                     context.data.email.as_deref(),
-                    false,  // captcha_required
+                    false,  // captcha_required (form not found, so unknown)
                     false,  // captcha_solved
                     false,  // email_verification_required
                     false,  // email_verified
@@ -219,8 +256,8 @@ impl RegistrationEngine {
                 &Self::detect_network(url),
                 Some(&context.data.username),
                 context.data.email.as_deref(),
-                false,  // TODO: Track actual CAPTCHA
-                false,
+                captcha_encountered,  // Track if CAPTCHA was present
+                captcha_was_solved,   // Track if we solved it
                 result.requires_email_verification,
                 false,
                 true,  // success
@@ -265,8 +302,8 @@ impl RegistrationEngine {
                 &Self::detect_network(url),
                 Some(&context.data.username),
                 context.data.email.as_deref(),
-                false,  // TODO: Track actual CAPTCHA
-                false,
+                captcha_encountered,  // Track if CAPTCHA was present
+                captcha_was_solved,   // Track if we solved it
                 result.requires_email_verification,
                 false,
                 false,  // success = false

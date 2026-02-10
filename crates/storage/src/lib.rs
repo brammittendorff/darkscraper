@@ -6,6 +6,8 @@ use tracing::info;
 use darkscraper_core::PageData;
 
 mod registration_queries;
+mod account_status;
+mod email_queries;
 
 #[derive(Clone)]
 pub struct Storage {
@@ -461,5 +463,96 @@ impl Storage {
         .fetch_all(&self.pool)
         .await?;
         Ok(rows)
+    }
+
+    /// Store authenticated URL for future crawling
+    pub async fn store_authenticated_url(
+        &self,
+        url: &str,
+        domain: &str,
+        network: &str,
+        session_cookies: Option<&str>,
+    ) -> Result<i64> {
+        let row: (i64,) = sqlx::query_as(
+            r#"
+            INSERT INTO authenticated_urls (url, domain, network, session_cookies)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (url) DO UPDATE SET
+                session_cookies = EXCLUDED.session_cookies,
+                last_checked_at = NOW()
+            RETURNING id
+            "#
+        )
+        .bind(url)
+        .bind(domain)
+        .bind(network)
+        .bind(session_cookies)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row.0)
+    }
+
+    /// Count URLs for a domain
+    pub async fn count_urls_for_domain(&self, domain: &str) -> Result<usize> {
+        let count = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(DISTINCT url) FROM pages WHERE domain = $1"
+        )
+        .bind(domain)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(count as usize)
+    }
+
+    /// Update account content analysis
+    pub async fn update_account_content_analysis(
+        &self,
+        domain: &str,
+        urls_before: usize,
+        urls_after: usize,
+        content_increase: f64,
+        auth_urls_discovered: usize,
+    ) -> Result<()> {
+        sqlx::query(
+            r#"
+            UPDATE registered_accounts
+            SET urls_before_registration = $2,
+                urls_after_registration = $3,
+                content_unlocked_percent = $4,
+                authenticated_urls_discovered = $5,
+                last_crawled_at = NOW()
+            WHERE site_domain = $1
+            "#
+        )
+        .bind(domain)
+        .bind(urls_before as i32)
+        .bind(urls_after as i32)
+        .bind(content_increase)
+        .bind(auth_urls_discovered as i32)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Mark email as verified
+    pub async fn update_email_verified(&self, domain: &str, username: &str) -> Result<()> {
+        account_status::update_email_verified(&self.pool, domain, username).await
+    }
+
+    /// Update last login timestamp
+    pub async fn update_last_login(&self, domain: &str, username: &str) -> Result<()> {
+        account_status::update_last_login(&self.pool, domain, username).await
+    }
+
+    /// Update account status
+    pub async fn update_account_status(&self, domain: &str, username: &str, status: &str) -> Result<()> {
+        account_status::update_account_status(&self.pool, domain, username, status).await
+    }
+
+    /// Count DNMX email accounts
+    pub async fn count_dnmx_accounts(&self) -> Result<i64> {
+        email_queries::count_dnmx_accounts(&self.pool).await
     }
 }

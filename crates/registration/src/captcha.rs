@@ -101,11 +101,12 @@ impl CaptchaSolver {
         &self,
         captcha_info: &CaptchaInfo,
         page_url: &str,
+        proxy_url: Option<&str>,
     ) -> Result<String, RegistrationError> {
         match &self.service {
             CaptchaService::Free => {
                 let free_solver = crate::captcha_free::FreeCaptchaSolver::new();
-                free_solver.solve_captcha_free(captcha_info, "", page_url).await
+                free_solver.solve_captcha_free(captcha_info, "", page_url, proxy_url).await
             }
             CaptchaService::Disabled => {
                 Err(RegistrationError::CaptchaRequired)

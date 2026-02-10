@@ -214,6 +214,7 @@ impl SuccessSignal for SuccessKeywordSignal {
             "success", "successful", "congratulations", "confirmed",
             "activated", "registered", "created", "welcome", "thank you",
             "check your email", "verify", "logged in",
+            "account created", "you may now login", "registration complete",
         ];
 
         let error_keywords = [
@@ -249,21 +250,20 @@ impl FailureSignal for ErrorMessageSignal {
     fn detect(&self, _before: &PageState, after: &PageState) -> Option<f32> {
         let html_lower = after.html.to_lowercase();
 
-        // Be more specific about errors to avoid false positives
-        let strong_errors = html_lower.contains("invalid login") ||
-                           html_lower.contains("invalid password") ||
-                           html_lower.contains("incorrect") ||
-                           html_lower.contains("failed");
+        // Only detect VERY specific registration errors
+        // Dark web sites often have "error 404" in footers, etc.
+        let registration_errors =
+            (html_lower.contains("invalid") && html_lower.contains("login")) ||
+            (html_lower.contains("incorrect") && html_lower.contains("password")) ||
+            (html_lower.contains("username") && html_lower.contains("already") && html_lower.contains("taken")) ||
+            (html_lower.contains("email") && html_lower.contains("already") && html_lower.contains("exist")) ||
+            html_lower.contains("registration failed") ||
+            html_lower.contains("signup failed");
 
-        let weak_errors = html_lower.contains("error") &&
-                         (html_lower.contains("username") || html_lower.contains("email") || html_lower.contains("password"));
-
-        if strong_errors {
-            Some(0.8)
-        } else if weak_errors {
-            Some(0.5)
+        if registration_errors {
+            Some(0.5)  // Reduced from 0.8
         } else {
-            None
+            None  // Don't penalize for generic "error" text
         }
     }
 }
@@ -276,23 +276,9 @@ impl FailureSignal for FormStillPresentSignal {
     }
 
     fn detect(&self, before: &PageState, after: &PageState) -> Option<f32> {
-        // If registration form is still visible, likely failed
-        let before_has_form = before.html.to_lowercase().contains("<form");
-        let after_has_form = after.html.to_lowercase().contains("<form");
-
-        if before_has_form && after_has_form {
-            // Check if it's the same form (registration vs. login)
-            let before_has_reg = before.html.to_lowercase().contains("register");
-            let after_has_reg = after.html.to_lowercase().contains("register");
-
-            if before_has_reg && after_has_reg {
-                Some(0.5)
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+        // Don't use this signal - too many false positives on dark web sites
+        // Many sites keep forms visible after registration
+        None
     }
 }
 
@@ -306,13 +292,15 @@ impl FailureSignal for ValidationErrorSignal {
     fn detect(&self, _before: &PageState, after: &PageState) -> Option<f32> {
         let html_lower = after.html.to_lowercase();
 
-        let validation_keywords = [
-            "required", "must", "invalid", "too short", "too long",
-            "already taken", "already exists", "not available",
-        ];
+        // Only detect SPECIFIC validation errors in context
+        let validation_errors =
+            (html_lower.contains("username") && html_lower.contains("required")) ||
+            (html_lower.contains("password") && html_lower.contains("required")) ||
+            (html_lower.contains("email") && html_lower.contains("required")) ||
+            (html_lower.contains("field") && html_lower.contains("required"));
 
-        if validation_keywords.iter().any(|k| html_lower.contains(k)) {
-            Some(0.7)
+        if validation_errors {
+            Some(0.4)  // Reduced from 0.7
         } else {
             None
         }

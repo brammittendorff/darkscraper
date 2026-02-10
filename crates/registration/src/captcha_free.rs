@@ -35,8 +35,9 @@ impl FreeCaptchaSolver {
         captcha_info: &CaptchaInfo,
         page_html: &str,
         page_url: &str,
+        proxy_url: Option<&str>,
     ) -> Result<String, RegistrationError> {
-        info!("attempting FREE CAPTCHA solve");
+        info!("attempting FREE CAPTCHA solve (proxy: {:?})", proxy_url);
 
         match captcha_info.captcha_type {
             crate::captcha::CaptchaType::TextCaptcha => {
@@ -44,7 +45,7 @@ impl FreeCaptchaSolver {
             }
             crate::captcha::CaptchaType::ImageCaptcha => {
                 if let Some(ref image_url) = captcha_info.image_url {
-                    self.solve_image_captcha_ocr(image_url, page_url).await
+                    self.solve_image_captcha_ocr(image_url, page_url, proxy_url).await
                 } else {
                     Err(RegistrationError::CaptchaRequired)
                 }
@@ -169,6 +170,7 @@ impl FreeCaptchaSolver {
         &self,
         image_url: &str,
         page_url: &str,
+        proxy_url: Option<&str>,
     ) -> Result<String, RegistrationError> {
         if !self.use_ocr {
             return Err(RegistrationError::RegistrationFailed(
@@ -178,8 +180,8 @@ impl FreeCaptchaSolver {
 
         info!("solving image CAPTCHA with OCR: {}", image_url);
 
-        // Download CAPTCHA image
-        let image_data = self.download_captcha_image(image_url, page_url).await?;
+        // Download CAPTCHA image through proxy
+        let image_data = self.download_captcha_image(image_url, page_url, proxy_url).await?;
 
         // Save to temp file
         let temp_path = "/tmp/captcha_image.png";
@@ -259,6 +261,7 @@ impl FreeCaptchaSolver {
         &self,
         image_url: &str,
         page_url: &str,
+        proxy_url: Option<&str>,
     ) -> Result<Vec<u8>, RegistrationError> {
         // Parse the image URL (might be relative)
         let full_url = if image_url.starts_with("http") {
@@ -279,12 +282,19 @@ impl FreeCaptchaSolver {
                 .to_string()
         };
 
-        info!("downloading CAPTCHA image: {}", full_url);
+        info!("downloading CAPTCHA image: {} (proxy: {:?})", full_url, proxy_url);
 
-        // Download with reqwest (will use proxy if configured)
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()
+        // Build client with proxy support for Tor
+        let mut client_builder = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(60));
+
+        if let Some(proxy) = proxy_url {
+            let proxy_obj = reqwest::Proxy::all(proxy)
+                .map_err(|e| RegistrationError::RegistrationFailed(format!("Proxy error: {}", e)))?;
+            client_builder = client_builder.proxy(proxy_obj);
+        }
+
+        let client = client_builder.build()
             .map_err(|e| RegistrationError::RegistrationFailed(e.to_string()))?;
 
         let response = client
